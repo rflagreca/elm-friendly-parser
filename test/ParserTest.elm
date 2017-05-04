@@ -5,16 +5,14 @@ import Json.Encode exposing (Value)
 import Test exposing (..)
 import Expect
 
+import Parser exposing (..)
 
 tests : Test
 tests =
     describe "Test"
-        [ test "truly working" <|
+        [ test "parses a string" <|
             \() ->
-                Expect.equal True True
-        , test "falsey working" <|
-            \() ->
-                Expect.equal False False
+                Expect.equal (Match "abc") (parse "abc")
         ]
 
 
