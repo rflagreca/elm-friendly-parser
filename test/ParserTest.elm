@@ -12,7 +12,9 @@ tests =
     describe "Test"
         [ test "parses a string" <|
             \() ->
-                Expect.equal (Match "abc") (parse "abc")
+                Expect.equal
+                    (Matched "abc")
+                    (parse (start (match "abc")) "abc")
         ]
 
 
