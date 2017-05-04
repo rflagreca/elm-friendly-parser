@@ -38,23 +38,28 @@ type ParseResult =
     | ExpectedOperator Operator
     | ExpectedChunk Chunk
     | ExpectedChunks (List Chunk)
+    | NoStartingRule
 
 type alias Rules = Dict String Operator
 
 parse : Parser -> String -> ParseResult
-parse rules input =
-    Matched input
+parse parser input =
+    case getStartRule parser of
+        Just startOp -> Matched input
+        Nothing -> NoStartingRule
 
 -- RULES
+
+noRules : Rules
+noRules = Dict.empty
 
 addRule : String -> Operator -> Rules -> Rules
 addRule name op rules =
     rules |> Dict.insert name op
 
-
 start : Operator -> Rules
 start op =
-    Dict.empty |> addRule "start" op
+    noRules |> addRule "start" op
 
 -- OPERATORS
 
@@ -67,6 +72,10 @@ choice operators =
     Choice operators
 
 -- UTILS
+
+getStartRule : Parser -> Maybe Operator
+getStartRule parser =
+    Dict.get "start" parser
 
 isNotParsed : ParseResult -> Bool
 isNotParsed result =

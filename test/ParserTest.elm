@@ -10,8 +10,19 @@ import Parser exposing (..)
 suite : Test
 suite =
     describe "friendly parser"
-        [ testBasicMatching
+        [ testStartRule
+        , testBasicMatching
         , testChoiceMatching
+        ]
+
+testStartRule : Test
+testStartRule =
+    describe "no start rule"
+        [ test "should fail to parse anything without \"start\" rule" <|
+            expectToFailToParseWith
+                "foo"
+                NoStartingRule
+                noRules
         ]
 
 testBasicMatching : Test
@@ -23,7 +34,7 @@ testBasicMatching =
                 "abc"
                 (start <| (match "abc"))
         , test "not matches a string when it is unequeal to the one expected" <|
-            expectNotToParse
+            expectToFailToParse
                 "ab"
                 (start <| (match "abc"))
         ]
@@ -39,7 +50,7 @@ testChoiceMatching =
                     [ expectToParse "a" "a" parser
                     , expectToParse "b" "b" parser
                     , expectToParse "c" "c" parser
-                    , expectNotToParse "d" parser
+                    , expectToFailToParse "d" parser
                     ]
         ]
 
@@ -52,15 +63,25 @@ expectToParse input output parser =
             (Matched output)
             (parse parser input)
 
-expectNotToParse : String -> Parser -> (() -> Expect.Expectation)
-expectNotToParse input parser =
+expectToFailToParse : String -> Parser -> (() -> Expect.Expectation)
+expectToFailToParse input parser =
     \() ->
         let
             result = (parse parser input)
         in
             Expect.true
-                ("Expected \"" ++ input ++ "\" not to parse.")
+                ("Expected to fail to parse \"" ++ input ++ "\".")
                 (isNotParsed result)
+
+expectToFailToParseWith : String -> ParseResult -> Parser -> (() -> Expect.Expectation)
+expectToFailToParseWith input output parser =
+    \() ->
+        let
+            result = (parse parser input)
+        in
+            case result of
+                Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
+                r -> Expect.equal output r
 
 
 main : TestProgram
