@@ -20,8 +20,12 @@ testBasicMatching =
         [ test "matches simple string" <|
             expectToParse
                 "abc"
+                "abc"
                 (start <| (match "abc"))
-                (Matched "abc")
+        , test "not matches a string when it is unequeal to the one expected" <|
+            expectNotToParse
+                "ab"
+                (start <| (match "abc"))
         ]
 
 testChoiceMatching : Test
@@ -29,20 +33,35 @@ testChoiceMatching =
     describe "choice matching"
         [ test "matches correctly" <|
             let
-                choiceParser = start <| choice [ match "a", match "b", match "c" ]
+                parser = start <| choice [ match "a", match "b", match "c" ]
             in
                 Expect.all
-                    [ expectToParse "a" choiceParser (Matched "a")
-                    , expectToParse "b" choiceParser (Matched "b")
+                    [ expectToParse "a" "a" parser
+                    , expectToParse "b" "b" parser
+                    , expectToParse "c" "c" parser
+                    , expectNotToParse "d" parser
                     ]
         ]
 
-expectToParse : String -> Parser -> ParseResult -> (() -> Expect.Expectation)
-expectToParse input parser result =
+-- UTILS
+
+expectToParse : String -> String -> Parser -> (() -> Expect.Expectation)
+expectToParse input output parser =
     \() ->
         Expect.equal
-            result
+            (Matched output)
             (parse parser input)
+
+expectNotToParse : String -> Parser -> (() -> Expect.Expectation)
+expectNotToParse input parser =
+    \() ->
+        let
+            result = (parse parser input)
+        in
+            Expect.true
+                ("Expected \"" ++ input ++ "\" not to parse.")
+                (isNotParsed result)
+
 
 main : TestProgram
 main =

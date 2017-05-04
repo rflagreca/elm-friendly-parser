@@ -45,13 +45,18 @@ parse : Parser -> String -> ParseResult
 parse rules input =
     Matched input
 
+-- RULES
+
 addRule : String -> Operator -> Rules -> Rules
 addRule name op rules =
     rules |> Dict.insert name op
 
+
 start : Operator -> Rules
 start op =
     Dict.empty |> addRule "start" op
+
+-- OPERATORS
 
 match : String -> Operator
 match subject =
@@ -60,3 +65,17 @@ match subject =
 choice : List Operator -> Operator
 choice operators =
     Choice operators
+
+-- UTILS
+
+isNotParsed : ParseResult -> Bool
+isNotParsed result =
+    case result of
+        Matched _ -> False
+        _ -> True
+
+isParsedAs : String -> ParseResult -> Bool
+isParsedAs subject result =
+    case result of
+        Matched s -> (s == subject)
+        _ -> False
