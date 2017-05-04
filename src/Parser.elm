@@ -26,15 +26,22 @@ type OperatorType =
 
 type alias Operator = OperatorType
 
-type ParseResult = Matched String | MatchError
+type alias RuleName = String
+
+type alias Chunk = ( Int, String )
+
+type alias Parser = Rules
+
+type ParseResult =
+      Matched String
+    | ExpectedRule RuleName
+    | ExpectedOperator Operator
+    | ExpectedChunk Chunk
+    | ExpectedChunks (List Chunk)
 
 type alias Rules = Dict String Operator
 
--- type alias ParserOptions = {
---     rules: Rules
--- }
-
-parse : Rules -> String -> ParseResult
+parse : Parser -> String -> ParseResult
 parse rules input =
     Matched input
 
@@ -49,3 +56,7 @@ start op =
 match : String -> Operator
 match subject =
     Match subject
+
+choice : List Operator -> Operator
+choice operators =
+    Choice operators

@@ -7,20 +7,46 @@ import Expect
 
 import Parser exposing (..)
 
-tests : Test
-tests =
-    describe "Test"
-        [ test "parses a string" <|
-            \() ->
-                Expect.equal
-                    (Matched "abc")
-                    (parse (start (match "abc")) "abc")
+suite : Test
+suite =
+    describe "friendly parser"
+        [ testBasicMatching
+        , testChoiceMatching
         ]
 
+testBasicMatching : Test
+testBasicMatching =
+    describe "basic matching"
+        [ test "matches simple string" <|
+            expectToParse
+                "abc"
+                (start <| (match "abc"))
+                (Matched "abc")
+        ]
+
+testChoiceMatching : Test
+testChoiceMatching =
+    describe "choice matching"
+        [ test "matches correctly" <|
+            let
+                choiceParser = start <| choice [ match "a", match "b", match "c" ]
+            in
+                Expect.all
+                    [ expectToParse "a" choiceParser (Matched "a")
+                    , expectToParse "b" choiceParser (Matched "b")
+                    ]
+        ]
+
+expectToParse : String -> Parser -> ParseResult -> (() -> Expect.Expectation)
+expectToParse input parser result =
+    \() ->
+        Expect.equal
+            result
+            (parse parser input)
 
 main : TestProgram
 main =
-    run emit tests
+    run emit suite
 
 
 port emit : ( String, Value ) -> Cmd msg
