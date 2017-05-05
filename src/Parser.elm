@@ -41,9 +41,14 @@ type ParseResult =
     | NoStartingRule
 
 type alias Rules = Dict String Operator
+type alias Values v = Dict String v
 
 -- type alias Context a = Dict String a
-type alias Context = Dict String String
+type alias Context v = {
+    position: Int,
+    rules: Rules,
+    values: Values v
+}
 
 parse : Parser -> String -> ParseResult
 parse parser input =
@@ -76,13 +81,13 @@ choice operators =
 
 -- OPERATORS EXECUTION
 
-execute : Operator -> Context -> String -> String
+execute : Operator -> Context v -> String -> String
 execute op ctx input =
     case op of
         Match s -> execMatch s input ctx
         _ -> input
 
-execMatch : String -> String -> Context -> String
+execMatch : String -> String -> Context v -> String
 execMatch expectation input ctx =
     input
 
