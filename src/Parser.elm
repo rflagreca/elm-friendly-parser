@@ -42,6 +42,9 @@ type ParseResult =
 
 type alias Rules = Dict String Operator
 
+-- type alias Context a = Dict String a
+type alias Context = Dict String String
+
 parse : Parser -> String -> ParseResult
 parse parser input =
     case getStartRule parser of
@@ -70,6 +73,18 @@ match subject =
 choice : List Operator -> Operator
 choice operators =
     Choice operators
+
+-- OPERATORS EXECUTION
+
+execute : Operator -> Context -> String -> String
+execute op ctx input =
+    case op of
+        Match s -> execMatch s input ctx
+        _ -> input
+
+execMatch : String -> String -> Context -> String
+execMatch expectation input ctx =
+    input
 
 -- UTILS
 
