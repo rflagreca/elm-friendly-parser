@@ -28,21 +28,20 @@ type alias Operator = OperatorType
 
 type alias RuleName = String
 
-type alias Chunk = ( Int, String )
+-- type alias Chunk = ( Int, String )
 
 type alias Parser = Rules
 
 type ParseResult =
       Matched String
+    | ExpectedString String
     | ExpectedRule RuleName
     | ExpectedOperator Operator
-    | ExpectedChunk Chunk
-    | ExpectedChunks (List Chunk)
+    | ExpectedEndOfInput String
+    -- | ExpectedChunk Chunk
+    -- | ExpectedChunks (List Chunk)
     | NoStartingRule
     | NotImplemented
-
-type alias Rules = Dict String Operator
-type alias Values v = Dict String v
 
 -- type alias Context a = Dict String a
 type alias Context v =
@@ -50,6 +49,11 @@ type alias Context v =
     , rules: Rules
     , values: Values v
 }
+
+type alias OperatorResult v = (ParseResult, Context v)
+
+type alias Rules = Dict String Operator
+type alias Values v = Dict String v
 
 parse : Parser -> String -> ParseResult
 parse parser input =
@@ -86,12 +90,25 @@ choice operators =
 execute : Operator -> Context v -> String -> ParseResult
 execute op ctx input =
     case op of
-        Match s -> execMatch s input ctx
+        Match s -> Tuple.first (execMatch s input ctx)
         _ -> NotImplemented
 
-execMatch : String -> String -> Context v -> ParseResult
+execMatch : String -> String -> Context v -> OperatorResult v
 execMatch expectation input ctx =
-    Matched input
+    let
+        inputLength = String.length input
+        expectedLength = String.length expectation
+    in
+        if (ctx.position + expectedLength) > inputLength then
+            ( ExpectedEndOfInput expectation, ctx )
+        else
+            let
+                slice = input |> String.slice ctx.position expectedLength
+            in
+                if (String.startsWith slice expectation) then
+                    (Matched expectation, ctx)
+                else
+                    (ExpectedString expectation, ctx)
 
 -- UTILS
 
