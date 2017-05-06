@@ -39,21 +39,23 @@ type ParseResult =
     | ExpectedChunk Chunk
     | ExpectedChunks (List Chunk)
     | NoStartingRule
+    | NotImplemented
 
 type alias Rules = Dict String Operator
 type alias Values v = Dict String v
 
 -- type alias Context a = Dict String a
-type alias Context v = {
-    position: Int,
-    rules: Rules,
-    values: Values v
+type alias Context v =
+    { position: Int
+    , rules: Rules
+    , values: Values v
 }
 
 parse : Parser -> String -> ParseResult
 parse parser input =
     case getStartRule parser of
-        Just startOp -> Matched input
+        Just startOperator ->
+            execute startOperator initContext input
         Nothing -> NoStartingRule
 
 -- RULES
@@ -81,17 +83,27 @@ choice operators =
 
 -- OPERATORS EXECUTION
 
-execute : Operator -> Context v -> String -> String
+execute : Operator -> Context v -> String -> ParseResult
 execute op ctx input =
     case op of
         Match s -> execMatch s input ctx
-        _ -> input
+        _ -> NotImplemented
 
-execMatch : String -> String -> Context v -> String
+execMatch : String -> String -> Context v -> ParseResult
 execMatch expectation input ctx =
-    input
+    Matched input
 
 -- UTILS
+
+noValues : Values v
+noValues = Dict.empty
+
+initContext : Context v
+initContext =
+    { position = 0
+    , rules = noRules
+    , values = noValues
+    }
 
 getStartRule : Parser -> Maybe Operator
 getStartRule parser =
