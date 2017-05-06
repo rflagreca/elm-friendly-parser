@@ -45,7 +45,9 @@ type ParseResult =
 
 -- type alias Context a = Dict String a
 type alias Context v =
-    { position: Int
+    { input: String
+    , inputLength: Int
+    , position: Int
     , rules: Rules
     , values: Values v
 }
@@ -59,7 +61,7 @@ parse : Parser -> String -> ParseResult
 parse parser input =
     case getStartRule parser of
         Just startOperator ->
-            execute startOperator initContext input
+            execute startOperator (initContext input)
         Nothing -> NoStartingRule
 
 -- RULES
@@ -87,37 +89,39 @@ choice operators =
 
 -- OPERATORS EXECUTION
 
-execute : Operator -> Context v -> String -> ParseResult
-execute op ctx input =
+execute : Operator -> Context v -> ParseResult
+execute op ctx =
     case op of
-        Match s -> Tuple.first (execMatch s input ctx)
+        Match s -> Tuple.first (execMatch s ctx)
         _ -> NotImplemented
 
-execMatch : String -> String -> Context v -> OperatorResult v
-execMatch expectation input ctx =
+execMatch : String -> Context v -> OperatorResult v
+execMatch str ctx =
     let
-        inputLength = String.length input
-        expectedLength = String.length expectation
+        ilen = ctx.inputLength -- length of the input string
+        slen = String.length str -- length of the expectation string
     in
-        if (ctx.position + expectedLength) > inputLength then
-            ( ExpectedEndOfInput expectation, ctx )
+        if (ctx.position + slen) > ilen then
+            ( ExpectedEndOfInput str, ctx )
         else
-            let
-                slice = input |> String.slice ctx.position expectedLength
-            in
-                if (String.startsWith slice expectation) then
-                    (Matched expectation, ctx)
-                else
-                    (ExpectedString expectation, ctx)
+            if (String.startsWith str
+                (ctx.input |> String.dropLeft ctx.position)) then
+                ( Matched str
+                , { ctx | position = ctx.position + slen }
+                )
+            else
+                ( ExpectedString str, ctx )
 
 -- UTILS
 
 noValues : Values v
 noValues = Dict.empty
 
-initContext : Context v
-initContext =
-    { position = 0
+initContext : String -> Context v
+initContext input =
+    { input = input
+    , inputLength = String.length input
+    , position = 0
     , rules = noRules
     , values = noValues
     }
