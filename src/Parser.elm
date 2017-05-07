@@ -32,14 +32,22 @@ type alias RuleName = String
 
 type alias Parser = Rules
 
-type ParseResult =
-      Matched String
-    | ExpectedString String
+type Expectation =
+      ExpectedValue String
+    | ExpectedAnything
     | ExpectedRule RuleName
-    | ExpectedOperator Operator
-    | ExpectedEndOfInput String
+    -- | ExpectedOperator Operator
+    | ExpectedEndOfInput
     -- | ExpectedChunk Chunk
     -- | ExpectedChunks (List Chunk)
+
+type Sample =
+      GotValue String
+    | GotEndOfInput
+
+type ParseResult =
+      Matched String
+    | ExpectationFailure ( Expectation, Sample )
     | NoStartingRule
     | NotImplemented
 
@@ -61,7 +69,7 @@ parse : Parser -> String -> ParseResult
 parse parser input =
     case getStartRule parser of
         Just startOperator ->
-            execute startOperator (initContext input)
+            extractParseResult (execute startOperator (initContext input))
         Nothing -> NoStartingRule
 
 -- RULES
@@ -79,6 +87,10 @@ start op =
 
 -- OPERATORS
 
+ch : Operator
+ch =
+    NextChar
+
 match : String -> Operator
 match subject =
     Match subject
@@ -89,28 +101,41 @@ choice operators =
 
 -- OPERATORS EXECUTION
 
-execute : Operator -> Context v -> ParseResult
+execute : Operator -> Context v -> OperatorResult v
 execute op ctx =
     case op of
-        Match s -> Tuple.first (execMatch s ctx)
-        _ -> NotImplemented
+        NextChar -> execNextChar ctx
+        Match str -> execMatch str ctx
+        _ -> ( NotImplemented, ctx )
+
+execNextChar : Context v -> OperatorResult v
+execNextChar ctx =
+    if (ctx.position >= ctx.inputLength) then
+        ( ExpectationFailure ( ExpectedAnything, GotEndOfInput )
+        , ctx )
+    else
+        ( Matched (getNextChar ctx)
+        , advanceBy 1 ctx )
 
 execMatch : String -> Context v -> OperatorResult v
-execMatch str ctx =
+execMatch expectation ctx =
     let
-        ilen = ctx.inputLength -- length of the input string
-        slen = String.length str -- length of the expectation string
+        inputLength = ctx.inputLength
+        expectationLength = String.length expectation
     in
-        if (ctx.position + slen) > ilen then
-            ( ExpectedEndOfInput str, ctx )
+        if (ctx.position + expectationLength) > inputLength then
+            ( ExpectationFailure ( ExpectedValue expectation
+                                 , GotEndOfInput )
+            , ctx )
         else
-            if (String.startsWith str
+            if (String.startsWith expectation
                 (ctx.input |> String.dropLeft ctx.position)) then
-                ( Matched str
-                , { ctx | position = ctx.position + slen }
-                )
+                ( Matched expectation
+                , advanceBy expectationLength ctx )
             else
-                ( ExpectedString str, ctx )
+                ( ExpectationFailure ( ExpectedValue expectation
+                                     , GotValue (getCurrentChar ctx) )
+                , ctx )
 
 -- UTILS
 
@@ -141,3 +166,23 @@ isParsedAs subject result =
     case result of
         Matched s -> (s == subject)
         _ -> False
+
+advanceBy : Int -> Context v -> Context v
+advanceBy cnt ctx =
+    { ctx | position = ctx.position + cnt }
+
+getNextChar : Context v -> String
+getNextChar ctx =
+    String.slice (ctx.position + 1) (ctx.position + 2) ctx.input
+
+getCurrentChar : Context v -> String
+getCurrentChar ctx =
+    String.slice ctx.position (ctx.position + 1) ctx.input
+
+extractParseResult : OperatorResult v -> ParseResult
+extractParseResult opResult =
+    Tuple.first opResult
+
+extractContext : OperatorResult v -> Context v
+extractContext opResult =
+    Tuple.second opResult
