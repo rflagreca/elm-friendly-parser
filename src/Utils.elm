@@ -8,7 +8,7 @@ import List exposing (foldl)
 --
 -- executes the function for every item of `List a`, and while this
 -- function returns `Just b`, add `b` instance to a resulting list,
--- but stops execution completely when function returns `Nothing` first
+-- but stops execution immediately when function returns `Nothing` first
 -- time.
 --
 -- Example:
@@ -41,9 +41,9 @@ takeWhileMap f src =
 -- FIXME: use https://github.com/avh4/elm-transducers or may be there
 -- exists an equivalent
 --
--- executes the function for every item of `List a`, and while this
+-- execute the function for every item of `List a`, and while this
 -- function returns `Just b`, keeps last successful `b` instance to return,
--- but stops execution completely when function returns `Nothing` first
+-- but stop execution immediately when function returns `Nothing` first
 -- time.
 --
 -- Example:
@@ -69,6 +69,42 @@ takeTillLastSuccess f src =
             case (f item) of
               Just val -> ( True, Just val )
               Nothing -> ( False, res )
+          ( False, _ ) -> acc)
+      ( True, Nothing )
+      src)
+
+
+-- FIXME: use https://github.com/avh4/elm-transducers or may be there
+-- exists an equivalent
+--
+-- execute the function for every item of `List a`, and when this
+-- function returns `Just b` first time, return this `b` and stop execution.
+--
+-- Example:
+--
+-- ```
+-- (takeTillFirstSuccess
+--   (\n -> if (n <= 3) then Just (n - 10) else Nothing)
+--   [ 5, 2, 1, 0, 1, 3, 1, 0, 2, 3 ])
+-- -> Just -8
+--
+-- (takeTillFirstSuccess
+--   (\n -> if (n <= 3) then Just (n - 10) else Nothing)
+--   [ 5, 7, 15, 12, 10, 24, 4, 6, 28 ])
+-- -> Nothing
+-- ```
+takeTillFirstSuccess : (a -> Maybe b) -> List a -> Maybe b
+takeTillFirstSuccess f src =
+  Tuple.second
+    (List.foldl
+      (\item acc ->
+        case acc of
+          ( True, res ) ->
+            case (f item) of
+              Just val -> ( True, Just val )
+              Nothing -> case res of
+                Just val -> ( False, res )
+                Nothing -> ( True, res )
           ( False, _ ) -> acc)
       ( True, Nothing )
       src)
