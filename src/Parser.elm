@@ -1,6 +1,7 @@
 module Parser exposing (..)
 
 import Dict exposing (..)
+import Utils exposing (..)
 
 type alias UserCode = (ParseResult -> Operator)
 
@@ -106,6 +107,7 @@ execute op ctx =
     case op of
         NextChar -> execNextChar ctx
         Match str -> execMatch str ctx
+        Choice ops -> execChoice ops ctx
         _ -> ( NotImplemented, ctx )
 
 execNextChar : Context v -> OperatorResult v
@@ -136,6 +138,27 @@ execMatch expectation ctx =
                 ( ExpectationFailure ( ExpectedValue expectation
                                      , GotValue (getCurrentChar ctx) )
                 , ctx )
+
+execChoice : List Operator -> Context v -> OperatorResult v
+execChoice ops ctx =
+    let
+      results =
+        Utils.takeWhileMap
+            (\op ->
+                let
+                    execResult =  (execute op ctx)
+                in
+                    case Tuple.first execResult of
+                        Matched str -> Just execResult
+                        _ -> Nothing)
+            ops
+      firstResult = List.head results
+    in
+        case firstResult of
+            Just value -> value
+            Nothing -> ( ExpectationFailure ( ExpectedAnything
+                                            , GotValue (getCurrentChar ctx) )
+                       , ctx )
 
 -- UTILS
 

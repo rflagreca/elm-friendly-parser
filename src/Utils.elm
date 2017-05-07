@@ -3,6 +3,7 @@ module Utils exposing (..)
 import Tuple exposing (second)
 import List exposing (foldl)
 
+-- FIXME: use https://github.com/avh4/elm-transducers
 -- executes the function for every item of `List a`, and while this
 -- function returns `Just b`, add `b` instance to a a resulting list,
 -- but stops execution completely, when function returns `Nothing` first
