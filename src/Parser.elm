@@ -147,7 +147,7 @@ execChoice : List Operator -> Context v -> OperatorResult v
 execChoice ops ctx =
     let
       maybeSuccess =
-        Utils.takeTillFirstSuccess
+        Utils.takeUntilAndGet
             (\op ->
                 let
                     execResult = (execute op ctx)

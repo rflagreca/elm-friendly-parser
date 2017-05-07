@@ -52,6 +52,16 @@ testChoiceMatching =
                     , expectToParse "c" "c" parser
                     , expectToFailToParse "d" parser
                     ]
+        , test "gets first matching result" <|
+            expectToParse
+                "foo"
+                "foo"
+                (start <| choice [ match "foo", match "f" ])
+        , test "gets first matching result in a chain" <|
+            expectToParse
+                "foo"
+                "foo"
+                (start <| choice [ match "a", match "foo", match "f" ])
         ]
 
 -- UTILS
