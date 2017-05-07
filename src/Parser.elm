@@ -2,6 +2,7 @@ module Parser exposing (..)
 
 import Dict exposing (..)
 import Utils exposing (..)
+import List.Extra as LX exposing (..)
 
 type alias UserCode = (ParseResult -> Operator)
 
@@ -110,6 +111,9 @@ execute op ctx =
         Choice ops -> execChoice ops ctx
         _ -> ( NotImplemented, ctx )
 
+-- TODO: shortcuts for ( ExpectationFailure ..., ctx )
+--       and ( Matched .., advanceBy ctx )
+
 execNextChar : Context v -> OperatorResult v
 execNextChar ctx =
     if (ctx.position >= ctx.inputLength) then
@@ -142,19 +146,18 @@ execMatch expectation ctx =
 execChoice : List Operator -> Context v -> OperatorResult v
 execChoice ops ctx =
     let
-      results =
-        Utils.takeWhileMap
+      maybeSuccess =
+        Utils.takeTillLastSuccess
             (\op ->
                 let
-                    execResult =  (execute op ctx)
+                    execResult = (execute op ctx)
                 in
                     case Tuple.first execResult of
                         Matched str -> Just execResult
                         _ -> Nothing)
             ops
-      firstResult = List.head results
     in
-        case firstResult of
+        case maybeSuccess of
             Just value -> value
             Nothing -> ( ExpectationFailure ( ExpectedAnything
                                             , GotValue (getCurrentChar ctx) )
