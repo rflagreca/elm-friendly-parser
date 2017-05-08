@@ -46,8 +46,8 @@ type Sample =
       GotValue String
     | GotEndOfInput
 
-type ParseResult =
-      Matched String
+type ParseResult a =
+      Matched a
     | ExpectationFailure ( Expectation, Sample )
     | NoStartingRule
     | NotImplemented
@@ -61,12 +61,12 @@ type alias Context v =
     , values: Values v
 }
 
-type alias OperatorResult v = (ParseResult, Context v)
+type alias OperatorResult v = (ParseResult v, Context v)
 
 type alias Rules = Dict String Operator
 type alias Values v = Dict String v
 
-parse : Parser -> String -> ParseResult
+parse : Parser -> String -> ParseResult a
 parse parser input =
     case getStartRule parser of
         Just startOperator ->
@@ -99,6 +99,10 @@ match subject =
 choice : List Operator -> Operator
 choice operators =
     Choice operators
+
+sequence : List Operator -> Operator
+sequence operators =
+    Sequence operators
 
 -- OPERATORS EXECUTION
 
@@ -162,6 +166,26 @@ execChoice ops ctx =
                                             , GotValue (getCurrentChar ctx) )
                        , ctx )
 
+execSequence : List Operator -> Context v -> OperatorResult v
+execSequence ops ctx =
+    let
+      maybeSuccess =
+        Utils.iterateMapAnd
+            (\op ->
+                let
+                    execResult = (execute op ctx)
+                in
+                    case Tuple.first execResult of
+                        Matched str -> Just str
+                        _ -> Nothing)
+            ops
+    in
+        case maybeSuccess of
+            Just value -> ( Matched value, ctx )
+            Nothing -> ( ExpectationFailure ( ExpectedAnything
+                                            , GotValue (getCurrentChar ctx) )
+                       , ctx )
+
 -- UTILS
 
 noValues : Values v
@@ -180,13 +204,13 @@ getStartRule : Parser -> Maybe Operator
 getStartRule parser =
     Dict.get "start" parser
 
-isNotParsed : ParseResult -> Bool
+isNotParsed : ParseResult a -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
         _ -> True
 
-isParsedAs : String -> ParseResult -> Bool
+isParsedAs : String -> ParseResult String -> Bool
 isParsedAs subject result =
     case result of
         Matched s -> (s == subject)
@@ -204,7 +228,7 @@ getCurrentChar : Context v -> String
 getCurrentChar ctx =
     String.slice ctx.position (ctx.position + 1) ctx.input
 
-extractParseResult : OperatorResult v -> ParseResult
+extractParseResult : OperatorResult v -> ParseResult v
 extractParseResult opResult =
     Tuple.first opResult
 

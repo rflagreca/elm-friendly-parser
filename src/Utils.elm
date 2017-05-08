@@ -142,3 +142,37 @@ iterateAnd f src =
           ( False, _ ) -> ( False, Nothing ))
       ( True, Nothing )
       src)
+
+-- FIXME: use https://github.com/avh4/elm-transducers or may be there
+-- exists an equivalent
+--
+-- execute the function for every item of `List a`, return all the
+-- collected results only when the function returned `Just a` for all
+-- the items from the list with no exceptions, else return `Nothing`.
+--
+-- Example:
+--
+-- ```
+-- (iterateMapAnd
+--   (\n -> if (n <= 3) then Just (n + 100) else Nothing)
+--   [ 2, 1, 0, 1, 3 ])
+-- -> Just [ 102, 101, 100, 101, 103 ]
+--
+-- (iterateMapAnd
+--   (\n -> if (n <= 3) then Just (n + 100) else Nothing)
+--   [ 2, 1, 0, 1, 5 ])
+-- -> Nothing
+-- ```
+iterateMapAnd : (a -> Maybe b) -> List a -> Maybe (List b)
+iterateMapAnd f src =
+  Tuple.second
+    (List.foldl
+      (\item acc ->
+        case acc of
+          ( True, Just res ) ->
+            case (f item) of
+              Just val -> ( True, Just (res ++ [ val ]) )
+              Nothing -> ( False, Nothing )
+          _ -> ( False, Nothing ))
+      ( True, Just [] )
+      src)
