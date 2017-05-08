@@ -2,7 +2,6 @@ module Parser exposing (..)
 
 import Dict exposing (..)
 import Utils exposing (..)
-import List.Extra as LX exposing (..)
 
 type alias UserCode = (ParseResult -> Operator)
 
@@ -147,7 +146,7 @@ execChoice : List Operator -> Context v -> OperatorResult v
 execChoice ops ctx =
     let
       maybeSuccess =
-        Utils.takeUntilAndGet
+        Utils.iterateOr
             (\op ->
                 let
                     execResult = (execute op ctx)
@@ -212,3 +211,7 @@ extractParseResult opResult =
 extractContext : OperatorResult v -> Context v
 extractContext opResult =
     Tuple.second opResult
+
+-- failWith : Expectation -> Sample -> ParseResult
+-- failWith expectation sample =
+--     ExpectationFailure ( expectation, sample )
