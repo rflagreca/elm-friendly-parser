@@ -46,8 +46,9 @@ type Sample =
       GotValue String
     | GotEndOfInput
 
-type ParseResult a =
-      Matched a
+type ParseResult =
+      Matched String
+    | MatchedSequence (List String) -- TODO: store String / List String ... / as a type parameter
     | ExpectationFailure ( Expectation, Sample )
     | NoStartingRule
     | NotImplemented
@@ -61,12 +62,12 @@ type alias Context v =
     , values: Values v
 }
 
-type alias OperatorResult v = (ParseResult v, Context v)
+type alias OperatorResult v = (ParseResult, Context v)
 
 type alias Rules = Dict String Operator
 type alias Values v = Dict String v
 
-parse : Parser -> String -> ParseResult a
+parse : Parser -> String -> ParseResult
 parse parser input =
     case getStartRule parser of
         Just startOperator ->
@@ -156,7 +157,8 @@ execChoice ops ctx =
                     execResult = (execute op ctx)
                 in
                     case Tuple.first execResult of
-                        Matched str -> Just execResult
+                        Matched _ -> Just execResult
+                        MatchedSequence _ -> Just execResult
                         _ -> Nothing)
             ops
     in
@@ -177,11 +179,12 @@ execSequence ops ctx =
                 in
                     case Tuple.first execResult of
                         Matched str -> Just str
+                        MatchedSequence strings -> Just (String.join "," strings)
                         _ -> Nothing)
             ops
     in
         case maybeSuccess of
-            Just value -> ( Matched value, ctx )
+            Just value -> ( MatchedSequence value, ctx )
             Nothing -> ( ExpectationFailure ( ExpectedAnything
                                             , GotValue (getCurrentChar ctx) )
                        , ctx )
@@ -204,13 +207,14 @@ getStartRule : Parser -> Maybe Operator
 getStartRule parser =
     Dict.get "start" parser
 
-isNotParsed : ParseResult a -> Bool
+isNotParsed : ParseResult -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
+        MatchedSequence _ -> False
         _ -> True
 
-isParsedAs : String -> ParseResult String -> Bool
+isParsedAs : String -> ParseResult -> Bool
 isParsedAs subject result =
     case result of
         Matched s -> (s == subject)
@@ -228,7 +232,7 @@ getCurrentChar : Context v -> String
 getCurrentChar ctx =
     String.slice ctx.position (ctx.position + 1) ctx.input
 
-extractParseResult : OperatorResult v -> ParseResult v
+extractParseResult : OperatorResult v -> ParseResult
 extractParseResult opResult =
     Tuple.first opResult
 
