@@ -31,7 +31,12 @@ type alias RuleName = String
 
 -- type alias Chunk = ( Int, String )
 
-type alias Parser = Rules
+type alias Adapter i o = (i -> o)
+
+type alias Parser i o = {
+    adapter: Adapter i o,
+    rules: Rules
+}
 
 type Expectation v =
       ExpectedValue v
@@ -47,34 +52,35 @@ type Sample =
       GotValue String
     | GotEndOfInput
 
-type ParseResult v =
-      Matched v
-    | Failed ( Expectation v, Sample )
+type ParseResult o =
+      Matched o
+    | Failed ( Expectation o, Sample )
     | NoStartingRule
     | NotImplemented
 
 -- type alias Context a = Dict String a
-type alias Context v =
+type alias Context i o =
     { input: String
     , inputLength: Int
     , position: Int
     , rules: Rules
-    , values: Values v
+    , values: Values o
+    , adapter: Adapter i o
 }
 
-type alias OperatorResult v = (ParseResult v, Context v)
+type alias OperatorResult i o = (ParseResult o, Context i o)
 
 type alias Rules = Dict String Operator
-type alias Values v = Dict String v
+type alias Values o = Dict String o
 
-parse : Parser -> String -> ParseResult v
+parse : Parser i o -> String -> ParseResult o
 parse parser input =
     let
-        ctx = (initContext input)
+        ctx = (initContext parser.adapter input)
     in
         case getStartRule parser of
             Just startOperator ->
-                extractParseResult (execute startOperator ctx )
+                extractParseResult (execute startOperator ctx)
             Nothing -> NoStartingRule
 
 -- RULES
@@ -110,7 +116,7 @@ sequence operators =
 
 -- OPERATORS EXECUTION
 
-execute : Operator -> Context v -> OperatorResult v
+execute : Operator -> Context i o -> OperatorResult i o
 execute op ctx =
     case op of
         NextChar -> execNextChar ctx
@@ -121,14 +127,14 @@ execute op ctx =
 -- TODO: shortcuts for ( ExpectationFailure ..., ctx )
 --       and ( Matched .., advanceBy ctx )
 
-execNextChar : Context v -> OperatorResult v
+execNextChar : Context i o -> OperatorResult i o
 execNextChar ctx =
     if (ctx.position >= ctx.inputLength) then
         ctx |> failed ExpectedAnything GotEndOfInput
     else
         ctx |> matchedAdvance (getNextChar ctx) 1
 
-execMatch : String -> Context v -> OperatorResult v
+execMatch : String -> Context i o -> OperatorResult i o
 execMatch expectation ctx =
     let
         inputLength = ctx.inputLength
@@ -143,7 +149,7 @@ execMatch expectation ctx =
             else
                 ctx |> failed (ExpectedValue expectation) GotEndOfInput
 
-execChoice : List Operator -> Context v -> OperatorResult v
+execChoice : List Operator -> Context i o -> OperatorResult i o
 execChoice ops ctx =
     let
       maybeSuccess =
@@ -161,7 +167,7 @@ execChoice ops ctx =
             Just value -> value
             Nothing -> ctx |> failedCC ExpectedAnything
 
-execSequence : List Operator -> Context v -> OperatorResult v
+execSequence : List Operator -> Context i o -> OperatorResult i o
 execSequence ops ctx =
     let
       maybeSuccess =
@@ -184,18 +190,19 @@ execSequence ops ctx =
 noValues : Values v
 noValues = Dict.empty
 
-initContext : String -> Context v
-initContext input =
+initContext : Adapter i o -> String -> Context i o
+initContext adapter input =
     { input = input
     , inputLength = String.length input
     , position = 0
     , rules = noRules
     , values = noValues
+    , adapter = adapter
     }
 
-getStartRule : Parser -> Maybe Operator
+getStartRule : Parser a b -> Maybe Operator
 getStartRule parser =
-    Dict.get "start" parser
+    Dict.get "start" parser.rules
 
 isNotParsed : ParseResult v -> Bool
 isNotParsed result =
@@ -209,44 +216,44 @@ isParsedAs subject result =
         Matched s -> (toString s == subject)
         _ -> False
 
-advanceBy : Int -> Context v -> Context v
+advanceBy : Int -> Context i o -> Context i o
 advanceBy cnt ctx =
     { ctx | position = ctx.position + cnt }
 
-getNextChar : Context v -> String
+getNextChar : Context i o -> String
 getNextChar ctx =
     String.slice (ctx.position + 1) (ctx.position + 2) ctx.input
 
-getCurrentChar : Context v -> String
+getCurrentChar : Context i o -> String
 getCurrentChar ctx =
     String.slice ctx.position (ctx.position + 1) ctx.input
 
-gotChar : Context v -> Sample
+gotChar : Context i o -> Sample
 gotChar ctx =
     GotValue (getCurrentChar ctx)
 
-extractParseResult : OperatorResult v -> ParseResult v
+extractParseResult : OperatorResult i o -> ParseResult o
 extractParseResult opResult =
     Tuple.first opResult
 
-extractContext : OperatorResult v -> Context v
+extractContext : OperatorResult i o -> Context i o
 extractContext opResult =
     Tuple.second opResult
 
-matched : v -> Context v -> OperatorResult v
+matched : o -> Context i o -> OperatorResult i o
 matched val ctx =
     ( Matched val, ctx )
 
-matchedAdvance : v -> Int -> Context v -> OperatorResult v
+matchedAdvance : o -> Int -> Context i o -> OperatorResult i o
 matchedAdvance val count ctx =
     ( Matched val, ctx |> advanceBy count )
 
-failed : Expectation v -> Sample -> Context v -> OperatorResult v
+failed : Expectation o -> Sample -> Context i o -> OperatorResult i o
 failed expectation sample ctx =
     ( Failed ( expectation, sample ), ctx )
 
 -- fail with current character
-failedCC : Expectation v -> Context v -> OperatorResult v
+failedCC : Expectation o -> Context i o -> OperatorResult i o
 failedCC expectation ctx =
     ( Failed ( expectation, gotChar ctx ), ctx )
 
