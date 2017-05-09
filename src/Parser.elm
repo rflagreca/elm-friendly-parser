@@ -33,10 +33,11 @@ type alias RuleName = String
 
 type alias Parser = Rules
 
-type Expectation =
-      ExpectedValue String
+type Expectation v =
+      ExpectedValue v
     | ExpectedAnything
-    | ExpectedRule RuleName
+    -- | ExpectedRule RuleName
+    -- | ExpectedStartingRule
     -- | ExpectedOperator Operator
     | ExpectedEndOfInput
     -- | ExpectedChunk Chunk
@@ -46,10 +47,9 @@ type Sample =
       GotValue String
     | GotEndOfInput
 
-type ParseResult =
-      Matched String
-    | MatchedSequence (List String) -- TODO: store String / List String ... / as a type parameter
-    | ExpectationFailure ( Expectation, Sample )
+type ParseResult v =
+      Matched v
+    | Failed ( Expectation v, Sample )
     | NoStartingRule
     | NotImplemented
 
@@ -62,17 +62,20 @@ type alias Context v =
     , values: Values v
 }
 
-type alias OperatorResult v = (ParseResult, Context v)
+type alias OperatorResult v = (ParseResult v, Context v)
 
 type alias Rules = Dict String Operator
 type alias Values v = Dict String v
 
-parse : Parser -> String -> ParseResult
+parse : Parser -> String -> ParseResult v
 parse parser input =
-    case getStartRule parser of
-        Just startOperator ->
-            extractParseResult (execute startOperator (initContext input))
-        Nothing -> NoStartingRule
+    let
+        ctx = (initContext input)
+    in
+        case getStartRule parser of
+            Just startOperator ->
+                extractParseResult (execute startOperator ctx )
+            Nothing -> NoStartingRule
 
 -- RULES
 
@@ -121,11 +124,9 @@ execute op ctx =
 execNextChar : Context v -> OperatorResult v
 execNextChar ctx =
     if (ctx.position >= ctx.inputLength) then
-        ( ExpectationFailure ( ExpectedAnything, GotEndOfInput )
-        , ctx )
+        ctx |> failed ExpectedAnything GotEndOfInput
     else
-        ( Matched (getNextChar ctx)
-        , advanceBy 1 ctx )
+        ctx |> matchedAdvance (getNextChar ctx) 1
 
 execMatch : String -> Context v -> OperatorResult v
 execMatch expectation ctx =
@@ -134,18 +135,13 @@ execMatch expectation ctx =
         expectationLength = String.length expectation
     in
         if (ctx.position + expectationLength) > inputLength then
-            ( ExpectationFailure ( ExpectedValue expectation
-                                 , GotEndOfInput )
-            , ctx )
+            ctx |> failed (ExpectedValue expectation) GotEndOfInput
         else
             if (String.startsWith expectation
                 (ctx.input |> String.dropLeft ctx.position)) then
-                ( Matched expectation
-                , advanceBy expectationLength ctx )
+                ctx |> matchedAdvance expectation expectationLength
             else
-                ( ExpectationFailure ( ExpectedValue expectation
-                                     , GotValue (getCurrentChar ctx) )
-                , ctx )
+                ctx |> failed (ExpectedValue expectation) GotEndOfInput
 
 execChoice : List Operator -> Context v -> OperatorResult v
 execChoice ops ctx =
@@ -158,15 +154,12 @@ execChoice ops ctx =
                 in
                     case Tuple.first execResult of
                         Matched _ -> Just execResult
-                        MatchedSequence _ -> Just execResult
                         _ -> Nothing)
             ops
     in
         case maybeSuccess of
             Just value -> value
-            Nothing -> ( ExpectationFailure ( ExpectedAnything
-                                            , GotValue (getCurrentChar ctx) )
-                       , ctx )
+            Nothing -> ctx |> failedCC ExpectedAnything
 
 execSequence : List Operator -> Context v -> OperatorResult v
 execSequence ops ctx =
@@ -179,15 +172,12 @@ execSequence ops ctx =
                 in
                     case Tuple.first execResult of
                         Matched str -> Just str
-                        MatchedSequence strings -> Just (String.join "," strings)
                         _ -> Nothing)
             ops
     in
         case maybeSuccess of
-            Just value -> ( MatchedSequence value, ctx )
-            Nothing -> ( ExpectationFailure ( ExpectedAnything
-                                            , GotValue (getCurrentChar ctx) )
-                       , ctx )
+            Just value -> ( Matched value, ctx )
+            Nothing -> ctx |> failedCC ExpectedAnything
 
 -- UTILS
 
@@ -207,17 +197,16 @@ getStartRule : Parser -> Maybe Operator
 getStartRule parser =
     Dict.get "start" parser
 
-isNotParsed : ParseResult -> Bool
+isNotParsed : ParseResult v -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
-        MatchedSequence _ -> False
         _ -> True
 
-isParsedAs : String -> ParseResult -> Bool
+isParsedAs : String -> ParseResult v -> Bool
 isParsedAs subject result =
     case result of
-        Matched s -> (s == subject)
+        Matched s -> (toString s == subject)
         _ -> False
 
 advanceBy : Int -> Context v -> Context v
@@ -232,7 +221,11 @@ getCurrentChar : Context v -> String
 getCurrentChar ctx =
     String.slice ctx.position (ctx.position + 1) ctx.input
 
-extractParseResult : OperatorResult v -> ParseResult
+gotChar : Context v -> Sample
+gotChar ctx =
+    GotValue (getCurrentChar ctx)
+
+extractParseResult : OperatorResult v -> ParseResult v
 extractParseResult opResult =
     Tuple.first opResult
 
@@ -240,6 +233,25 @@ extractContext : OperatorResult v -> Context v
 extractContext opResult =
     Tuple.second opResult
 
+matched : v -> Context v -> OperatorResult v
+matched val ctx =
+    ( Matched val, ctx )
+
+matchedAdvance : v -> Int -> Context v -> OperatorResult v
+matchedAdvance val count ctx =
+    ( Matched val, ctx |> advanceBy count )
+
+failed : Expectation v -> Sample -> Context v -> OperatorResult v
+failed expectation sample ctx =
+    ( Failed ( expectation, sample ), ctx )
+
+-- fail with current character
+failedCC : Expectation v -> Context v -> OperatorResult v
+failedCC expectation ctx =
+    ( Failed ( expectation, gotChar ctx ), ctx )
+
 -- failWith : Expectation -> Sample -> ParseResult
 -- failWith expectation sample =
 --     ExpectationFailure ( expectation, sample )
+
+-- TODO: add Adapter function to a Parser which will adapt the matching result to a single type
