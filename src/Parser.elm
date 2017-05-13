@@ -34,7 +34,7 @@ type alias RuleName = String
 type alias Adapter i o = (i -> o)
 
 type alias Parser i o = {
-    adapter: Adapter i o,
+    adapt: Adapter i o,
     rules: Rules
 }
 
@@ -65,7 +65,7 @@ type alias Context i o =
     , position: Int
     , rules: Rules
     , values: Values o
-    , adapter: Adapter i o
+    , adapt: Adapter i o
 }
 
 type alias OperatorResult i o = (ParseResult o, Context i o)
@@ -76,7 +76,7 @@ type alias Values o = Dict String o
 parse : Parser i o -> String -> ParseResult o
 parse parser input =
     let
-        ctx = (initContext parser.adapter input)
+        ctx = (initContext parser.adapt input)
     in
         case getStartRule parser of
             Just startOperator ->
@@ -94,7 +94,7 @@ addRule name op rules =
 
 withStartRule : Operator -> Adapter i o -> Parser i o
 withStartRule op adapter =
-    { adapter = adapter
+    { adapt = adapter
     , rules = (noRules |> addRule "start" op)
     }
 
@@ -199,7 +199,7 @@ initContext adapter input =
     , position = 0
     , rules = noRules
     , values = noValues
-    , adapter = adapter
+    , adapt = adapter
     }
 
 getStartRule : Parser a b -> Maybe Operator
@@ -242,13 +242,13 @@ extractContext : OperatorResult i o -> Context i o
 extractContext opResult =
     Tuple.second opResult
 
-matched : o -> Context i o -> OperatorResult i o
+matched : i -> Context i o -> OperatorResult i o
 matched val ctx =
-    ( Matched val, ctx )
+    ( Matched (ctx.adapt val), ctx )
 
-matchedAdvance : o -> Int -> Context i o -> OperatorResult i o
+matchedAdvance : i -> Int -> Context i o -> OperatorResult i o
 matchedAdvance val count ctx =
-    ( Matched val, ctx |> advanceBy count )
+    ( Matched (ctx.adapt val), ctx |> advanceBy count )
 
 failed : Expectation o -> Sample -> Context i o -> OperatorResult i o
 failed expectation sample ctx =
