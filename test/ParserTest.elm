@@ -6,6 +6,7 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
+import SimpleParser exposing (..)
 
 suite : Test
 suite =

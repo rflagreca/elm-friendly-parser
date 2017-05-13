@@ -92,9 +92,11 @@ addRule : String -> Operator -> Rules -> Rules
 addRule name op rules =
     rules |> Dict.insert name op
 
-start : Operator -> Rules
-start op =
-    noRules |> addRule "start" op
+withStartRule : Operator -> Adapter i o -> Parser i o
+withStartRule op adapter =
+    { adapter = adapter
+    , rules = (noRules |> addRule "start" op)
+    }
 
 -- OPERATORS
 
