@@ -29,11 +29,11 @@ type alias Operator = OperatorType
 
 type alias RuleName = String
 
-type InputType = AString String | AList (List String)
+type InputType o = AString String | AList (List o)
 
 -- type alias Chunk = ( Int, String )
 
-type alias Adapter o = (InputType -> o)
+type alias Adapter o = (InputType o -> o)
 
 type alias Parser o = {
     adapt: Adapter o,
@@ -249,7 +249,7 @@ matched : String -> Context o -> OperatorResult o
 matched val ctx =
     ( Matched (ctx.adapt (AString val)), ctx )
 
-matchedList : List String -> Context o -> OperatorResult o
+matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
     ( Matched (ctx.adapt (AList val)), ctx )
 
