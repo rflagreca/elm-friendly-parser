@@ -40,8 +40,9 @@ type alias Parser o = {
     rules: Rules
 }
 
-type Expectation v =
-      ExpectedValue v
+type Expectation =
+      ExpectedValue String -- FIXME: InputType?
+    | ExpectedList (List String)
     | ExpectedAnything
     -- | ExpectedRule RuleName
     -- | ExpectedStartingRule
@@ -56,7 +57,7 @@ type Sample =
 
 type ParseResult o =
       Matched o
-    | Failed ( Expectation o, Sample )
+    | Failed ( Expectation, Sample )
     | NoStartingRule
     | NotImplemented
 
@@ -186,7 +187,7 @@ execSequence ops ctx =
             ops
     in
         case maybeSuccess of
-            Just value -> ( Matched value, ctx )
+            Just value -> ctx |> matchedList value
             Nothing -> ctx |> failedCC ExpectedAnything
 
 -- UTILS
@@ -248,16 +249,20 @@ matched : String -> Context o -> OperatorResult o
 matched val ctx =
     ( Matched (ctx.adapt (AString val)), ctx )
 
+matchedList : List String -> Context o -> OperatorResult o
+matchedList val ctx =
+    ( Matched (ctx.adapt (AList val)), ctx )
+
 matchedAdvance : String -> Int -> Context o -> OperatorResult o
 matchedAdvance val count ctx =
     ( Matched (ctx.adapt (AString val)), ctx |> advanceBy count )
 
-failed : Expectation o -> Sample -> Context o -> OperatorResult o
+failed : Expectation -> Sample -> Context o -> OperatorResult o
 failed expectation sample ctx =
     ( Failed ( expectation, sample ), ctx )
 
 -- fail with current character
-failedCC : Expectation o -> Context o -> OperatorResult o
+failedCC : Expectation -> Context o -> OperatorResult o
 failedCC expectation ctx =
     ( Failed ( expectation, gotChar ctx ), ctx )
 
