@@ -2,12 +2,14 @@ module SimpleParser exposing (..)
 
 import Parser exposing (..)
 
--- type ReturnType = AString String | AList (List String)
+type ReturnType = AString String | AList (List ReturnType)
 
-start : Operator -> Parser String ReturnType
+start : Operator -> Parser ReturnType
 start op =
-    Parser.withStartRule
+    Parser.withStartRule op adapter
 
-adapter : InputType -> InputType
+adapter : InputType ReturnType -> ReturnType
 adapter input =
-    input
+    case input of
+        Parser.AString str -> AString str
+        Parser.AList list -> AList list
