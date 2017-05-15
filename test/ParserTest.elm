@@ -6,7 +6,7 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
-import SimpleParser exposing (..)
+import BasicParser exposing (..)
 
 suite : Test
 suite =
@@ -25,7 +25,7 @@ testStartRule =
             expectToFailToParseWith
                 "foo"
                 NoStartRule
-                (SimpleParser.withRules Parser.noRules)
+                (BasicParser.withRules Parser.noRules)
         ]
 
 testBasicMatching : Test
@@ -35,11 +35,11 @@ testBasicMatching =
             expectToParse
                 "abc"
                 "abc"
-                (SimpleParser.start <| (match "abc"))
+                (BasicParser.start <| (match "abc"))
         , test "not matches a string when it is unequeal to the one expected" <|
             expectToFailToParse
                 "ab"
-                (SimpleParser.start <| (match "abc"))
+                (BasicParser.start <| (match "abc"))
         ]
 
 testChoiceMatching : Test
@@ -47,7 +47,7 @@ testChoiceMatching =
     describe "choice matching"
         [ test "matches correctly" <|
             let
-                parser = SimpleParser.start <| choice [ match "a", match "b", match "c" ]
+                parser = BasicParser.start <| choice [ match "a", match "b", match "c" ]
             in
                 Expect.all
                     [ expectToParse "a" "a" parser
@@ -59,24 +59,24 @@ testChoiceMatching =
             expectToParse
                 "foo"
                 "foo"
-                (SimpleParser.start <| choice [ match "foo", match "f" ])
+                (BasicParser.start <| choice [ match "foo", match "f" ])
         , test "gets first matching result in a chain" <|
             expectToParse
                 "foo"
                 "foo"
-                (SimpleParser.start <| choice [ match "a", match "foo", match "f" ])
+                (BasicParser.start <| choice [ match "a", match "foo", match "f" ])
         ]
 
 -- UTILS
 
-expectToParse : String -> String -> SimpleParser -> (() -> Expect.Expectation)
+expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     \() ->
         Expect.equal
-            (Matched (SimpleParser.AString output))
+            (Matched (BasicParser.AString output))
             (parse parser input)
 
-expectToFailToParse : String -> SimpleParser -> (() -> Expect.Expectation)
+expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)
 expectToFailToParse input parser =
     \() ->
         let
@@ -86,7 +86,7 @@ expectToFailToParse input parser =
                 ("Expected to fail to parse \"" ++ input ++ "\".")
                 (isNotParsed result)
 
-expectToFailToParseWith : String -> SimpleParser.ParseResult -> SimpleParser -> (() -> Expect.Expectation)
+expectToFailToParseWith : String -> BasicParser.ParseResult -> BasicParser -> (() -> Expect.Expectation)
 expectToFailToParseWith input output parser =
     \() ->
         let

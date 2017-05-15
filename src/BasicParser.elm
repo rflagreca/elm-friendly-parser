@@ -1,4 +1,4 @@
-module SimpleParser exposing (..)
+module BasicParser exposing (..)
 
 import Parser exposing (..)
 
@@ -7,15 +7,15 @@ import String exposing (..)
 
 type ReturnType = AString String | AList (List ReturnType)
 
-type alias SimpleParser = Parser.Parser ReturnType
+type alias BasicParser = Parser.Parser ReturnType
 
 type alias ParseResult = Parser.ParseResult ReturnType
 
-start : Operator -> SimpleParser
+start : Operator -> BasicParser
 start op =
     Parser.start op adapter
 
-withRules : Parser.Rules -> SimpleParser
+withRules : Parser.Rules -> BasicParser
 withRules rules =
     Parser.withRules rules adapter
 
