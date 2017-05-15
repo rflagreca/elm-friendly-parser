@@ -16,14 +16,16 @@ suite =
         , testChoiceMatching
         ]
 
+-- TODO: test core Parser, specifying adapters, etc.
+
 testStartRule : Test
 testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
             expectToFailToParseWith
                 "foo"
-                NoStartingRule
-                noRules
+                NoStartRule
+                (SimpleParser.withRules Parser.noRules)
         ]
 
 testBasicMatching : Test
@@ -33,11 +35,11 @@ testBasicMatching =
             expectToParse
                 "abc"
                 "abc"
-                (start <| (match "abc"))
+                (SimpleParser.start <| (match "abc"))
         , test "not matches a string when it is unequeal to the one expected" <|
             expectToFailToParse
                 "ab"
-                (start <| (match "abc"))
+                (SimpleParser.start <| (match "abc"))
         ]
 
 testChoiceMatching : Test
@@ -45,7 +47,7 @@ testChoiceMatching =
     describe "choice matching"
         [ test "matches correctly" <|
             let
-                parser = start <| choice [ match "a", match "b", match "c" ]
+                parser = SimpleParser.start <| choice [ match "a", match "b", match "c" ]
             in
                 Expect.all
                     [ expectToParse "a" "a" parser
@@ -57,24 +59,24 @@ testChoiceMatching =
             expectToParse
                 "foo"
                 "foo"
-                (start <| choice [ match "foo", match "f" ])
+                (SimpleParser.start <| choice [ match "foo", match "f" ])
         , test "gets first matching result in a chain" <|
             expectToParse
                 "foo"
                 "foo"
-                (start <| choice [ match "a", match "foo", match "f" ])
+                (SimpleParser.start <| choice [ match "a", match "foo", match "f" ])
         ]
 
 -- UTILS
 
-expectToParse : String -> String -> Parser -> (() -> Expect.Expectation)
+expectToParse : String -> String -> SimpleParser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     \() ->
         Expect.equal
-            (Matched output)
+            (Matched (SimpleParser.AString output))
             (parse parser input)
 
-expectToFailToParse : String -> Parser -> (() -> Expect.Expectation)
+expectToFailToParse : String -> SimpleParser -> (() -> Expect.Expectation)
 expectToFailToParse input parser =
     \() ->
         let
@@ -84,7 +86,7 @@ expectToFailToParse input parser =
                 ("Expected to fail to parse \"" ++ input ++ "\".")
                 (isNotParsed result)
 
-expectToFailToParseWith : String -> ParseResult -> Parser -> (() -> Expect.Expectation)
+expectToFailToParseWith : String -> SimpleParser.ParseResult -> SimpleParser -> (() -> Expect.Expectation)
 expectToFailToParseWith input output parser =
     \() ->
         let

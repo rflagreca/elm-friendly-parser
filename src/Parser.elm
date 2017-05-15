@@ -45,7 +45,7 @@ type Expectation =
     | ExpectedList (List String)
     | ExpectedAnything
     -- | ExpectedRule RuleName
-    -- | ExpectedStartingRule
+    -- | ExpectedStartRule
     -- | ExpectedOperator Operator
     | ExpectedEndOfInput
     -- | ExpectedChunk Chunk
@@ -58,7 +58,7 @@ type Sample =
 type ParseResult o =
       Matched o
     | Failed ( Expectation, Sample )
-    | NoStartingRule
+    | NoStartRule
     | NotImplemented
 
 -- type alias Context a = Dict String a
@@ -84,22 +84,29 @@ parse parser input =
         case getStartRule parser of
             Just startOperator ->
                 extractParseResult (execute startOperator ctx)
-            Nothing -> NoStartingRule
+            Nothing -> NoStartRule
 
 -- RULES
 
 noRules : Rules
 noRules = Dict.empty
 
+withRules : Rules -> Adapter o -> Parser o
+withRules rules adapter =
+    { adapt = adapter
+    , rules = rules
+    }
+
 addRule : String -> Operator -> Rules -> Rules
 addRule name op rules =
     rules |> Dict.insert name op
 
-withStartRule : Operator -> Adapter o -> Parser o
-withStartRule op adapter =
-    { adapt = adapter
-    , rules = (noRules |> addRule "start" op)
-    }
+start : Operator -> Adapter o -> Parser o
+start op adapter =
+    let
+        justStartRule = (noRules |> addRule "start" op)
+    in
+        withRules justStartRule adapter
 
 -- OPERATORS
 
