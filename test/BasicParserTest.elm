@@ -12,6 +12,8 @@ suite =
         [ testStartRule
         , testBasicMatching
         , testChoiceMatching
+        , testSequenceMatching
+        , testMaybeMatching
         ]
 
 -- TODO: test core Parser, specifying adapters, etc.
@@ -77,6 +79,25 @@ testSequenceMatching =
             expectToFailToParse
                 "foo"
                 (BasicParser.start <| seqnc [ match "f", match "o", match "p" ])
+        ]
+
+testMaybeMatching : Test
+testMaybeMatching =
+    describe "maybe matching"
+        [ test "matches when sample exists" <|
+            expectToParse
+                "foo"
+                "foo"
+                (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "o") ])
+        , test "matches when sample not exists" <|
+            expectToParse
+                "fo"
+                "fo"
+                (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "o") ])
+        , test "fails" <|
+            expectToFailToParse
+                "foo"
+                (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "p") ])
         ]
 
 -- UTILS

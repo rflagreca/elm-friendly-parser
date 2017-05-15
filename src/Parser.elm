@@ -6,8 +6,8 @@ import Utils exposing (..)
 type alias UserCode = (ParseResult -> Operator)
 
 type OperatorType =
-      NextChar -- 1. `ch`
-    | Match String -- 2. `match`
+      NextChar -- 1. `ch` -- DONE
+    | Match String -- 2. `match` -- DONE
     | Regex String String -- 3. `re`
     | TextOf Operator -- 4. `text`
     | Maybe_ Operator -- 5. `maybe`
@@ -15,8 +15,8 @@ type OperatorType =
     | Any Operator  -- 7. `any`
     | And Operator -- 8. `and`
     | Not Operator -- 9. `not`
-    | Sequence (List Operator) -- 10. `seqnc`
-    | Choice (List Operator) -- 11. `choice`
+    | Sequence (List Operator) -- 10. `seqnc` -- DONE
+    | Choice (List Operator) -- 11. `choice` -- DONE
     | Action Operator UserCode -- 12. `action`
     | PreExec UserCode -- 13. `pre`
     | NegPreExec UserCode -- 14. `xpre`
@@ -126,6 +126,10 @@ seqnc : List Operator -> Operator
 seqnc operators =
     Sequence operators
 
+maybe : Operator -> Operator
+maybe operator =
+    Maybe_ operator
+
 -- OPERATORS EXECUTION
 
 execute : Operator -> Context o -> OperatorResult o
@@ -135,6 +139,7 @@ execute op ctx =
         Match str -> execMatch str ctx -- `match`
         Choice ops -> execChoice ops ctx -- `choice`
         Sequence ops -> execSequence ops ctx -- `seqnc`
+        Maybe_ op -> execMaybe op ctx -- `maybe`
         _ -> ( NotImplemented, ctx )
 
 execNextChar : Context o -> OperatorResult o
@@ -195,6 +200,15 @@ execSequence ops ctx =
             Just value -> ctx |> matchedList value
             Nothing -> ctx |> failedCC ExpectedAnything
 
+execMaybe : Operator -> Context o -> OperatorResult o
+execMaybe op ctx =
+    let
+        result = execute op ctx
+    in
+        case result of
+            ( Matched s, newCtx ) -> matchedWith s newCtx
+            _ -> matched "" ctx
+
 -- UTILS
 
 noValues : Values v
@@ -249,6 +263,10 @@ extractParseResult opResult =
 extractContext : OperatorResult o -> Context o
 extractContext opResult =
     Tuple.second opResult
+
+matchedWith : o -> Context o -> OperatorResult o
+matchedWith output ctx =
+    ( Matched output, ctx )
 
 matched : String -> Context o -> OperatorResult o
 matched val ctx =
