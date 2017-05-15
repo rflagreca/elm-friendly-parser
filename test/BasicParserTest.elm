@@ -65,6 +65,20 @@ testChoiceMatching =
                 (BasicParser.start <| choice [ match "a", match "foo", match "f" ])
         ]
 
+testSequenceMatching : Test
+testSequenceMatching =
+    describe "sequence matching"
+        [ test "matches correctly" <|
+            expectToParse
+                "foo"
+                "foo"
+                (BasicParser.start <| seqnc [ match "f", match "o", match "o" ])
+        , test "fails if one of the operators fails" <|
+            expectToFailToParse
+                "foo"
+                (BasicParser.start <| seqnc [ match "f", match "o", match "p" ])
+        ]
+
 -- UTILS
 
 expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)

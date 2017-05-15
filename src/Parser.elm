@@ -122,8 +122,8 @@ choice : List Operator -> Operator
 choice operators =
     Choice operators
 
-sequence : List Operator -> Operator
-sequence operators =
+seqnc : List Operator -> Operator
+seqnc operators =
     Sequence operators
 
 -- OPERATORS EXECUTION
@@ -131,13 +131,11 @@ sequence operators =
 execute : Operator -> Context o -> OperatorResult o
 execute op ctx =
     case op of
-        NextChar -> execNextChar ctx
-        Match str -> execMatch str ctx
-        Choice ops -> execChoice ops ctx
+        NextChar -> execNextChar ctx -- `ch`
+        Match str -> execMatch str ctx -- `match`
+        Choice ops -> execChoice ops ctx -- `choice`
+        Sequence ops -> execSequence ops ctx -- `seqnc`
         _ -> ( NotImplemented, ctx )
-
--- TODO: shortcuts for ( ExpectationFailure ..., ctx )
---       and ( Matched .., advanceBy ctx )
 
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
