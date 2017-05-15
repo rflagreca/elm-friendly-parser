@@ -6,17 +6,12 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
-import BasicParser exposing (..)
 
 suite : Test
 suite =
     describe "friendly parser"
         [ testStartRule
-        , testBasicMatching
-        , testChoiceMatching
         ]
-
--- TODO: test core Parser, specifying adapters, etc.
 
 testStartRule : Test
 testStartRule =
@@ -25,58 +20,23 @@ testStartRule =
             expectToFailToParseWith
                 "foo"
                 NoStartRule
-                (BasicParser.withRules Parser.noRules)
+                (Parser.withRules Parser.noRules alwaysTestStringAdapter)
         ]
 
-testBasicMatching : Test
-testBasicMatching =
-    describe "basic matching"
-        [ test "matches simple string" <|
-            expectToParse
-                "abc"
-                "abc"
-                (BasicParser.start <| (match "abc"))
-        , test "not matches a string when it is unequeal to the one expected" <|
-            expectToFailToParse
-                "ab"
-                (BasicParser.start <| (match "abc"))
-        ]
-
-testChoiceMatching : Test
-testChoiceMatching =
-    describe "choice matching"
-        [ test "matches correctly" <|
-            let
-                parser = BasicParser.start <| choice [ match "a", match "b", match "c" ]
-            in
-                Expect.all
-                    [ expectToParse "a" "a" parser
-                    , expectToParse "b" "b" parser
-                    , expectToParse "c" "c" parser
-                    , expectToFailToParse "d" parser
-                    ]
-        , test "gets first matching result" <|
-            expectToParse
-                "foo"
-                "foo"
-                (BasicParser.start <| choice [ match "foo", match "f" ])
-        , test "gets first matching result in a chain" <|
-            expectToParse
-                "foo"
-                "foo"
-                (BasicParser.start <| choice [ match "a", match "foo", match "f" ])
-        ]
+alwaysTestStringAdapter : InputType String -> String
+alwaysTestStringAdapter val =
+    "test"
 
 -- UTILS
 
-expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
+expectToParse : String -> o -> Parser o -> (() -> Expect.Expectation)
 expectToParse input output parser =
     \() ->
         Expect.equal
-            (Matched (BasicParser.AString output))
+            (Matched output)
             (parse parser input)
 
-expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)
+expectToFailToParse : String -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParse input parser =
     \() ->
         let
@@ -86,7 +46,7 @@ expectToFailToParse input parser =
                 ("Expected to fail to parse \"" ++ input ++ "\".")
                 (isNotParsed result)
 
-expectToFailToParseWith : String -> BasicParser.ParseResult -> BasicParser -> (() -> Expect.Expectation)
+expectToFailToParseWith : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParseWith input output parser =
     \() ->
         let
