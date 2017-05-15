@@ -1,7 +1,5 @@
-port module Main exposing (..)
+module BasicParserTest exposing (suite)
 
-import Test.Runner.Node exposing (run, TestProgram)
-import Json.Encode exposing (Value)
 import Test exposing (..)
 import Expect
 
@@ -95,11 +93,3 @@ expectToFailToParseWith input output parser =
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
                 r -> Expect.equal output r
-
-
-main : TestProgram
-main =
-    run emit suite
-
-
-port emit : ( String, Value ) -> Cmd msg
