@@ -53,6 +53,11 @@ testChoiceMatching =
                     , expectToParse "c" "c" parser
                     , expectToFailToParse "d" parser
                     ]
+        , test "fails correctly" <|
+            expectToFailToParseWith
+                "foo"
+                ( Failed ( ExpectedList [ "a", "b", "c" ], GotValue "f" ) )
+                (BasicParser.start <| choice [ match "a", match "b", match "c" ])
         , test "gets first matching result" <|
             expectToParse
                 "foo"
@@ -76,6 +81,11 @@ testSequenceMatching =
         , test "fails if one of the operators fails" <|
             expectToFailToParse
                 "foo"
+                (BasicParser.start <| seqnc [ match "f", match "o", match "p" ])
+        , test "fails correctly" <|
+            expectToFailToParseWith
+                "foo"
+                ( Failed ( ExpectedValue "p", GotValue "o" ) )
                 (BasicParser.start <| seqnc [ match "f", match "o", match "p" ])
         ]
 

@@ -166,21 +166,20 @@ execMatch expectation ctx =
 
 execChoice : List Operator -> Context o -> OperatorResult o
 execChoice ops ctx =
-    let
-      maybeSuccess =
-        Utils.iterateOr
-            (\op ->
-                let
-                    execResult = (execute op ctx)
-                in
-                    case Tuple.first execResult of
-                        Matched _ -> Just execResult
-                        _ -> Nothing)
-            ops
-    in
-        case maybeSuccess of
-            Just value -> value
-            Nothing -> ctx |> failedCC ExpectedAnything
+    Utils.reduce
+        ( NotImplemented, ctx )
+        ops
+        (\op ( prevResult, prevCtx ) ->
+            case prevResult of
+                Matched _ -> Just ( prevResult, prevCtx )
+                _ ->
+                    let
+                        execResult = (execute op prevCtx)
+                    in
+                        case execResult of
+                            ( Matched _, _ ) -> Just execResult
+                            _ -> Just ( prevResult, prevCtx )
+        )
 
 execSequence : List Operator -> Context o -> OperatorResult o
 execSequence ops ctx =
@@ -294,3 +293,13 @@ failedCC expectation ctx =
 --     ExpectationFailure ( expectation, sample )
 
 -- TODO: add Adapter function to a Parser which will adapt the matching result to a single type
+
+opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
+opResultToMaybe ( parseResult, ctx ) =
+    ( parseResultToMaybe parseResult, ctx )
+
+parseResultToMaybe : ParseResult o -> Maybe o
+parseResultToMaybe result =
+    case result of
+        Matched v -> Just v
+        _ -> Nothing

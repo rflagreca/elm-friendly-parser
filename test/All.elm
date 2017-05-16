@@ -13,8 +13,8 @@ allSuites : Test
 allSuites =
     describe "Elm Friendly Parser"
         [ UtilsTest.suite
-        -- , ParserTest.suite
-        -- , BasicParserTest.suite
+        , ParserTest.suite
+        , BasicParserTest.suite
         ]
 
 
