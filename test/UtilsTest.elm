@@ -11,6 +11,8 @@ suite =
         [ testReduce
         , testIterateMap
         , testIterateOr
+        , testIterateAnd
+        , testIterateMapAnd
         ]
 
 testReduce : Test
@@ -129,6 +131,74 @@ testIterateOr =
                 Expect.equal
                     Nothing
                     (iterateOr
+                        (\n -> if (n > 10) then Just n else Nothing )
+                        [ 0, 1, 2, 3 ])
+            )
+        ]
+
+testIterateAnd : Test
+testIterateAnd =
+    describe "iterateAnd"
+        [ test "should return last successful element when function passes for all of them" <|
+            (\() ->
+                Expect.equal
+                    (Just 3)
+                    (iterateAnd (\n -> Just n)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should return `Nothing` when function not passes for one of the elements" <|
+            (\() ->
+                Expect.equal
+                    Nothing
+                    (iterateAnd (\n -> if (n > 0) then Just n else Nothing)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should apply what mapping function returns" <|
+            (\() ->
+                Expect.equal
+                    (Just 13)
+                    (iterateAnd (\n -> if (n > 1) then Just (n + 10) else Just (n - 10))
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should return `Nothing` when function returned `Nothing` for all the elements" <|
+            (\() ->
+                Expect.equal
+                    Nothing
+                    (iterateAnd
+                        (\n -> if (n > 10) then Just n else Nothing )
+                        [ 0, 1, 2, 3 ])
+            )
+        ]
+
+testIterateMapAnd : Test
+testIterateMapAnd =
+    describe "iterateMapAnd"
+        [ test "should return all values when function passes for all the elements" <|
+            (\() ->
+                Expect.equal
+                    (Just [ 0, 1, 2, 3 ])
+                    (iterateMapAnd (\n -> Just n)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should return `Nothing` when function not passes for one of the elements" <|
+            (\() ->
+                Expect.equal
+                    Nothing
+                    (iterateMapAnd (\n -> if (n > 0) then Just n else Nothing)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should apply what mapping function returns" <|
+            (\() ->
+                Expect.equal
+                    (Just [ -10, -9, 12, 13 ])
+                    (iterateMapAnd (\n -> if (n > 1) then Just (n + 10) else Just (n - 10))
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should return `Nothing` when function returned `Nothing` for all the elements" <|
+            (\() ->
+                Expect.equal
+                    Nothing
+                    (iterateMapAnd
                         (\n -> if (n > 10) then Just n else Nothing )
                         [ 0, 1, 2, 3 ])
             )

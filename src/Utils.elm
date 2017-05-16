@@ -42,8 +42,29 @@ iterateWhileAnd f src =
 
 iterateAnd : (a -> Maybe b) -> List a -> Maybe b
 iterateAnd f src =
-  Nothing
+  Tuple.second
+    (reduce ( True, Nothing ) src
+      (\cur ( hasValue, lastValue ) ->
+        case hasValue of
+          True -> case (f cur) of
+            Just v -> Just ( True, Just v )
+            Nothing -> Just ( False, Nothing )
+          False -> Just ( False, Nothing )
+      )
+    )
 
 iterateMapAnd : (a -> Maybe b) -> List a -> Maybe (List b)
 iterateMapAnd f src =
-  Nothing
+  Tuple.second
+    (reduce ( True, Nothing ) src
+      (\cur ( hasValue, maybeAllValues ) ->
+        case hasValue of
+          True -> case (f cur) of
+            Just v ->
+              case maybeAllValues of
+                Just allValues -> Just ( True, Just ( allValues ++ [ v ] ) )
+                Nothing -> Just ( True, Just [ v ] )
+            Nothing -> Just ( False, Nothing )
+          False -> Just ( False, Nothing )
+      )
+    )
