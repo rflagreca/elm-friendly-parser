@@ -16,19 +16,6 @@ reduce init src reducer =
       (init, True)
       src)
 
-iterate : (a -> Maybe b) -> List a -> c -> (Maybe b -> c -> Maybe c) -> c
-iterate f src init iterator =
-  Tuple.first
-    (List.foldl
-      (\curVal (prevVal, prevContinue) ->
-        case prevContinue of
-          True -> case iterator (f curVal) prevVal of
-            Just v -> (v, True)
-            Nothing -> (prevVal, False)
-          False -> (prevVal, False))
-      (init, True)
-      src)
-
 iterateMap : (a -> Maybe b) -> List a -> List b
 iterateMap f src =
   reduce [] src
@@ -37,16 +24,17 @@ iterateMap f src =
         Just v -> Just ( prev ++ [ v ] )
         Nothing -> Nothing
     )
-  -- iterate f src []
-  --   (\cur prev ->
-  --     case cur of
-  --       Just v -> Just ( prev ++ [ cur ] )
-  --       Nothing -> Nothing
-  --   )
 
 iterateOr : (a -> Maybe b) -> List a -> Maybe b
 iterateOr f src =
-  Nothing
+  reduce Nothing src
+    (\cur hasValue ->
+      case hasValue of
+        Just v -> Just hasValue
+        Nothing -> case (f cur) of
+          Just v -> Just ( Just v )
+          Nothing -> Just Nothing
+    )
 
 iterateWhileAnd : (a -> Maybe b) -> List a -> Maybe b
 iterateWhileAnd f src =

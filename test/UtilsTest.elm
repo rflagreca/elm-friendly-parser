@@ -10,6 +10,7 @@ suite =
     describe "utils"
         [ testReduce
         , testIterateMap
+        , testIterateOr
         ]
 
 testReduce : Test
@@ -61,7 +62,7 @@ testReduce =
 testIterateMap : Test
 testIterateMap =
     describe "iterateMap"
-        [ test "should convert all elements while `f` returns something" <|
+        [ test "should be able to get all elements while function returns something" <|
             (\() ->
                 Expect.equal
                     [ 0, 1, 2, 3 ]
@@ -95,6 +96,40 @@ testIterateMap =
                     [ -10, -9, -8 ]
                     (iterateMap
                         (\n -> if (n < 3) then Just (n - 10) else Nothing )
+                        [ 0, 1, 2, 3 ])
+            )
+        ]
+
+testIterateOr : Test
+testIterateOr =
+    describe "iterateOr"
+        [ test "should get first element for which function returns something" <|
+            (\() ->
+                Expect.equal
+                    (Just 0)
+                    (iterateOr (\n -> Just n)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should get first element for which function returns something, p.II" <|
+            (\() ->
+                Expect.equal
+                    (Just 2)
+                    (iterateOr (\n -> if (n > 1) then Just n else Nothing)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should apply what mapping function returns" <|
+            (\() ->
+                Expect.equal
+                    (Just 12)
+                    (iterateOr (\n -> if (n > 1) then Just (n + 10) else Nothing)
+                        [ 0, 1, 2, 3 ])
+            )
+        , test "should return `Nothing` when function returned `Nothing` for all the elements" <|
+            (\() ->
+                Expect.equal
+                    Nothing
+                    (iterateOr
+                        (\n -> if (n > 10) then Just n else Nothing )
                         [ 0, 1, 2, 3 ])
             )
         ]
