@@ -4,6 +4,7 @@ import Test.Runner.Node exposing (run, TestProgram)
 import Json.Encode exposing (Value)
 import Test exposing (..)
 
+import UtilsTest exposing (suite)
 import ParserTest exposing (suite)
 import BasicParserTest exposing (suite)
 
@@ -11,8 +12,9 @@ import BasicParserTest exposing (suite)
 allSuites : Test
 allSuites =
     describe "Elm Friendly Parser"
-        [ ParserTest.suite
-        , BasicParserTest.suite
+        [ UtilsTest.suite
+        -- , ParserTest.suite
+        -- , BasicParserTest.suite
         ]
 
 

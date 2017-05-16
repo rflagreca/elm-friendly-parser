@@ -16,8 +16,6 @@ suite =
         , testMaybeMatching
         ]
 
--- TODO: test core Parser, specifying adapters, etc.
-
 testStartRule : Test
 testStartRule =
     describe "no start rule"
