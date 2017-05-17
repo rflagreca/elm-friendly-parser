@@ -42,7 +42,7 @@ type alias Parser o = {
 
 type Expectation =
       ExpectedValue String -- FIXME: InputType?
-    | ExpectedList (List String)
+    -- | ExpectedList (List String)
     | ExpectedAnything
     -- | ExpectedRule RuleName
     -- | ExpectedStartRule
@@ -57,9 +57,15 @@ type Sample =
 
 type ParseResult o =
       Matched o
+    -- FIXME: | MatchedList ( List o ) // NB: replaced by `matchedList` using `ctx.adapt (AList a)`
     | Failed ( Expectation, Sample )
+    | FailedNested ( List (ParseResult o), Sample )
+    -- FIXME: | FailedNested ( List Expectation, Sample )
+    -- FIXME: | Nested ( List (ParseResult o), Sample )
     | NoStartRule
     | NotImplemented
+
+-- FIXME: ParseResult should be Mathed | Failed pair, like Maybe or Result
 
 -- type alias Context a = Dict String a
 type alias Context o =
@@ -162,42 +168,64 @@ execMatch expectation ctx =
                 (ctx.input |> String.dropLeft ctx.position)) then
                 ctx |> matchedAdvance expectation expectationLength
             else
+                -- FIXME: return next char, not EOI
                 ctx |> failed (ExpectedValue expectation) GotEndOfInput
 
 execChoice : List Operator -> Context o -> OperatorResult o
 execChoice ops ctx =
-    Utils.reduce
-        ( NotImplemented, ctx )
-        ops
-        (\op ( prevResult, prevCtx ) ->
-            case prevResult of
-                Matched _ -> Just ( prevResult, prevCtx )
-                _ ->
+    let
+        reducedReport =
+            List.foldl
+                (\op prevStep ->
                     let
-                        execResult = (execute op prevCtx)
+                        ( maybeSucceededBefore, prevFailures, prevCtx ) = prevStep
                     in
-                        case execResult of
-                            ( Matched _, _ ) -> Just execResult
-                            _ -> Just ( prevResult, prevCtx )
-        )
+                        case maybeSucceededBefore of
+                            Just _ -> prevStep
+                            Nothing ->
+                                let
+                                    execResult = (execute op prevCtx)
+                                    ( parseResult, newCtx ) = execResult
+                                in
+                                    case parseResult of
+                                        Matched _ -> ( Just parseResult, prevFailures, newCtx )
+                                        _ -> ( Nothing, prevFailures ++ [ parseResult ], newCtx )
+                )
+                ( Nothing, [], ctx )
+                ops
+        ( maybeChoiceSucceeded, failures, lastCtx ) = reducedReport
+    in
+        case maybeChoiceSucceeded of
+            Just success -> ( success, lastCtx )
+            Nothing -> ctx |> failedNestedCC failures
 
 execSequence : List Operator -> Context o -> OperatorResult o
 execSequence ops ctx =
     let
-      maybeSuccess =
-        Utils.iterateMapAnd
-            (\op ->
-                let
-                    execResult = (execute op ctx)
-                in
-                    case Tuple.first execResult of
-                        Matched str -> Just str
-                        _ -> Nothing)
-            ops
+        reducedReport =
+            List.foldl
+                (\op prevStep ->
+                    let
+                        ( maybeFailedBefore, prevMatches, prevCtx ) = prevStep
+                    in
+                        case maybeFailedBefore of
+                            Just _ -> prevStep
+                            Nothing ->
+                                let
+                                    execResult = (execute op prevCtx)
+                                    ( parseResult, newCtx ) = execResult
+                                in
+                                    case parseResult of
+                                        Matched v -> ( Nothing, prevMatches ++ [ v ], newCtx )
+                                        _ -> ( Just parseResult, prevMatches, newCtx )
+                )
+                ( Nothing, [], ctx )
+                ops
+        ( maybeSequencsFailed, matches, lastCtx ) = reducedReport
     in
-        case maybeSuccess of
-            Just value -> ctx |> matchedList value
-            Nothing -> ctx |> failedCC ExpectedAnything
+        case maybeSequencsFailed of
+            Just failure -> ctx |> failedCC ExpectedAnything
+            Nothing -> ctx |> matchedList matches
 
 execMaybe : Operator -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -227,13 +255,13 @@ getStartRule : Parser o -> Maybe Operator
 getStartRule parser =
     Dict.get "start" parser.rules
 
-isNotParsed : ParseResult v -> Bool
+isNotParsed : ParseResult o -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
         _ -> True
 
-isParsedAs : String -> ParseResult v -> Bool
+isParsedAs : String -> ParseResult o -> Bool
 isParsedAs subject result =
     case result of
         Matched s -> (toString s == subject)
@@ -288,11 +316,17 @@ failedCC : Expectation -> Context o -> OperatorResult o
 failedCC expectation ctx =
     ( Failed ( expectation, gotChar ctx ), ctx )
 
+failedNested : List (ParseResult o) -> Sample -> Context o -> OperatorResult o
+failedNested failures sample ctx =
+    ( FailedNested ( failures, sample ), ctx )
+
+failedNestedCC : List (ParseResult o) -> Context o -> OperatorResult o
+failedNestedCC failures ctx =
+    ( FailedNested ( failures, gotChar ctx ), ctx )
+
 -- failWith : Expectation -> Sample -> ParseResult
 -- failWith expectation sample =
 --     ExpectationFailure ( expectation, sample )
-
--- TODO: add Adapter function to a Parser which will adapt the matching result to a single type
 
 opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
 opResultToMaybe ( parseResult, ctx ) =

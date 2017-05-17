@@ -56,7 +56,12 @@ testChoiceMatching =
         , test "fails correctly" <|
             expectToFailToParseWith
                 "foo"
-                ( Failed ( ExpectedList [ "a", "b", "c" ], GotValue "f" ) )
+                (nestedFailureOf
+                    [ ( "a", (GotValue "f") )
+                    , ( "b", (GotValue "f") )
+                    , ( "c", (GotValue "f") )
+                    ]
+                    (GotValue "f"))
                 (BasicParser.start <| choice [ match "a", match "b", match "c" ])
         , test "gets first matching result" <|
             expectToParse
@@ -110,11 +115,21 @@ testMaybeMatching =
 
 -- UTILS
 
+nestedFailureOf : List (String, Sample) -> Sample -> BasicParser.ParseResult
+nestedFailureOf strings sample =
+    FailedNested
+        (List.foldl
+            (\(str, sample) failures ->
+                failures ++ [ Failed (ExpectedValue str, sample) ])
+            []
+            strings
+        , sample)
+
 expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     \() ->
         Expect.equal
-            (Matched (BasicParser.AString output))
+            (Matched (BasicParser.RString output))
             (parse parser input)
 
 expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)
