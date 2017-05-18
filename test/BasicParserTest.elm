@@ -79,9 +79,9 @@ testSequenceMatching : Test
 testSequenceMatching =
     describe "sequence matching"
         [ test "matches correctly" <|
-            expectToParse
+            expectToParseNested
                 "foo"
-                "foo"
+                [ "f", "o", "o" ]
                 (BasicParser.start <| seqnc [ match "f", match "o", match "o" ])
         , test "fails if one of the operators fails" <|
             expectToFailToParse
@@ -98,14 +98,14 @@ testMaybeMatching : Test
 testMaybeMatching =
     describe "maybe matching"
         [ test "matches when sample exists" <|
-            expectToParse
+            expectToParseNested
                 "foo"
-                "foo"
+                [ "f", "o", "o" ]
                 (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "o") ])
         , test "matches when sample not exists" <|
-            expectToParse
+            expectToParseNested
                 "fo"
-                "fo"
+                [ "f", "o", "" ]
                 (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "o") ])
         , test "fails" <|
             expectToFailToParse
@@ -130,6 +130,14 @@ expectToParse input output parser =
     \() ->
         Expect.equal
             (Matched (BasicParser.RString output))
+            (parse parser input)
+
+expectToParseNested : String -> List String -> BasicParser -> (() -> Expect.Expectation)
+expectToParseNested input chunks parser =
+    \() ->
+        Expect.equal
+            (Matched (BasicParser.RList
+                (chunks |> List.map (\chunk -> RString chunk))))
             (parse parser input)
 
 expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)

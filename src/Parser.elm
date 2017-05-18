@@ -168,8 +168,7 @@ execMatch expectation ctx =
                 (ctx.input |> String.dropLeft ctx.position)) then
                 ctx |> matchedAdvance expectation expectationLength
             else
-                -- FIXME: return next char, not EOI
-                ctx |> failed (ExpectedValue expectation) GotEndOfInput
+                ctx |> failedCC (ExpectedValue expectation)
 
 execChoice : List Operator -> Context o -> OperatorResult o
 execChoice ops ctx =
@@ -221,11 +220,13 @@ execSequence ops ctx =
                 )
                 ( Nothing, [], ctx )
                 ops
-        ( maybeSequencsFailed, matches, lastCtx ) = reducedReport
+        ( maybeSequenceFailed, matches, lastCtx ) = reducedReport
     in
-        case maybeSequencsFailed of
-            Just failure -> ctx |> failedCC ExpectedAnything
+        case maybeSequenceFailed of
+            Just (Failed (expectation, sample)) -> ctx |> failed expectation sample
+            Just (FailedNested (failureList, sample)) -> ctx |> failedNestedCC failureList
             Nothing -> ctx |> matchedList matches
+            _ -> ctx |> failedCC ExpectedAnything
 
 execMaybe : Operator -> Context o -> OperatorResult o
 execMaybe op ctx =
