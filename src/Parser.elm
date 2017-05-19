@@ -55,15 +55,15 @@ type Sample =
       GotValue String
     | GotEndOfInput
 
+type FailureReason o =
+      ByExpectation ( Expectation, Sample )
+    | FollowingNestedRule ( List (ParseResult o), Sample )
+    | NoStartRule
+    | SomethingWasNotImplemented
+
 type ParseResult o =
       Matched o
-    -- FIXME: | MatchedList ( List o ) // NB: replaced by `matchedList` using `ctx.adapt (AList a)`
-    | Failed ( Expectation, Sample )
-    | FailedNested ( List (ParseResult o), Sample )
-    -- FIXME: | FailedNested ( List Expectation, Sample )
-    -- FIXME: | Nested ( List (ParseResult o), Sample )
-    | NoStartRule
-    | NotImplemented
+    | Failed (FailureReason o)
 
 -- FIXME: ParseResult should be Mathed | Failed pair, like Maybe or Result
 
@@ -90,7 +90,7 @@ parse parser input =
         case getStartRule parser of
             Just startOperator ->
                 extractParseResult (execute startOperator ctx)
-            Nothing -> NoStartRule
+            Nothing -> Failed NoStartRule
 
 -- RULES
 
@@ -140,18 +140,18 @@ maybe operator =
 
 execute : Operator -> Context o -> OperatorResult o
 execute op ctx =
-    case op of
-        NextChar -> execNextChar ctx -- `ch`
-        Match str -> execMatch str ctx -- `match`
-        Choice ops -> execChoice ops ctx -- `choice`
-        Sequence ops -> execSequence ops ctx -- `seqnc`
-        Maybe_ op -> execMaybe op ctx -- `maybe`
-        _ -> ( NotImplemented, ctx )
+    ctx |> case op of
+        NextChar -> execNextChar -- `ch`
+        Match str -> execMatch str -- `match`
+        Choice ops -> execChoice ops -- `choice`
+        Sequence ops -> execSequence ops -- `seqnc`
+        Maybe_ op -> execMaybe op -- `maybe`
+        _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
     if (ctx.position >= ctx.inputLength) then
-        ctx |> failed ExpectedAnything GotEndOfInput
+        ctx |> failedBy ExpectedAnything GotEndOfInput
     else
         ctx |> matchedAdvance (getNextChar ctx) 1
 
@@ -162,7 +162,7 @@ execMatch expectation ctx =
         expectationLength = String.length expectation
     in
         if (ctx.position + expectationLength) > inputLength then
-            ctx |> failed (ExpectedValue expectation) GotEndOfInput
+            ctx |> failedBy (ExpectedValue expectation) GotEndOfInput
         else
             if (String.startsWith expectation
                 (ctx.input |> String.dropLeft ctx.position)) then
@@ -195,8 +195,8 @@ execChoice ops ctx =
         ( maybeChoiceSucceeded, failures, lastCtx ) = reducedReport
     in
         case maybeChoiceSucceeded of
-            Just success -> ( success, lastCtx )
-            Nothing -> ctx |> failedNestedCC failures
+            Just (Matched success) -> ( Matched success, lastCtx )
+            _ -> ctx |> failedNestedCC failures
 
 execSequence : List Operator -> Context o -> OperatorResult o
 execSequence ops ctx =
@@ -209,7 +209,7 @@ execSequence ops ctx =
                     in
                         case maybeFailedBefore of
                             Just _ -> prevStep
-                            Nothing ->
+                            _ ->
                                 let
                                     execResult = (execute op prevCtx)
                                     ( parseResult, newCtx ) = execResult
@@ -223,10 +223,8 @@ execSequence ops ctx =
         ( maybeSequenceFailed, matches, lastCtx ) = reducedReport
     in
         case maybeSequenceFailed of
-            Just (Failed (expectation, sample)) -> ctx |> failed expectation sample
-            Just (FailedNested (failureList, sample)) -> ctx |> failedNestedCC failureList
-            Nothing -> ctx |> matchedList matches
-            _ -> ctx |> failedCC ExpectedAnything
+            Just (Failed reason) -> ( Failed reason, ctx )
+            _ -> ctx |> matchedList matches
 
 execMaybe : Operator -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -308,22 +306,30 @@ matchedAdvance : String -> Int -> Context o -> OperatorResult o
 matchedAdvance val count ctx =
     ( Matched (ctx.adapt (AString val)), ctx |> advanceBy count )
 
-failed : Expectation -> Sample -> Context o -> OperatorResult o
-failed expectation sample ctx =
-    ( Failed ( expectation, sample ), ctx )
+failed : FailureReason o -> Context o -> OperatorResult o
+failed reason ctx =
+    ( Failed reason, ctx )
+
+failedBy : Expectation -> Sample -> Context o -> OperatorResult o
+failedBy expectation sample ctx =
+    ctx |> failed (ByExpectation ( expectation, sample ))
 
 -- fail with current character
 failedCC : Expectation -> Context o -> OperatorResult o
 failedCC expectation ctx =
-    ( Failed ( expectation, gotChar ctx ), ctx )
+    ctx |> failedBy expectation (gotChar ctx)
 
 failedNested : List (ParseResult o) -> Sample -> Context o -> OperatorResult o
 failedNested failures sample ctx =
-    ( FailedNested ( failures, sample ), ctx )
+    ctx |> failed (FollowingNestedRule ( failures, sample ))
 
 failedNestedCC : List (ParseResult o) -> Context o -> OperatorResult o
 failedNestedCC failures ctx =
-    ( FailedNested ( failures, gotChar ctx ), ctx )
+    ctx |> failedNested failures (gotChar ctx)
+
+notImplemented : Context o -> OperatorResult o
+notImplemented ctx =
+    ctx |> failed SomethingWasNotImplemented
 
 -- failWith : Expectation -> Sample -> ParseResult
 -- failWith expectation sample =
@@ -338,3 +344,5 @@ parseResultToMaybe result =
     case result of
         Matched v -> Just v
         _ -> Nothing
+
+-- parseResultToMaybeInv : ParseResult o -> Maybe o

@@ -18,7 +18,7 @@ testStartRule =
         [ test "should fail to parse anything without \"start\" rule" <|
             expectToFailToParseWith
                 "foo"
-                NoStartRule
+                (Failed NoStartRule)
                 (Parser.withRules Parser.noRules alwaysTestStringAdapter)
         ]
 

@@ -22,7 +22,7 @@ testStartRule =
         [ test "should fail to parse anything without \"start\" rule" <|
             expectToFailToParseWith
                 "foo"
-                NoStartRule
+                (Failed NoStartRule)
                 (BasicParser.withRules Parser.noRules)
         ]
 
@@ -90,7 +90,7 @@ testSequenceMatching =
         , test "fails correctly" <|
             expectToFailToParseWith
                 "foo"
-                ( Failed ( ExpectedValue "p", GotValue "o" ) )
+                ( Failed (ByExpectation ( ExpectedValue "p", GotValue "o" ) ) )
                 (BasicParser.start <| seqnc [ match "f", match "o", match "p" ])
         ]
 
@@ -107,9 +107,10 @@ testMaybeMatching =
                 "fo"
                 [ "f", "o", "" ]
                 (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "o") ])
-        , test "fails" <|
-            expectToFailToParse
+        , test "matches when sample not exists, p. II" <|
+            expectToParseNested
                 "foo"
+                [ "f", "o", "" ]
                 (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "p") ])
         ]
 
@@ -117,13 +118,13 @@ testMaybeMatching =
 
 nestedFailureOf : List (String, Sample) -> Sample -> BasicParser.ParseResult
 nestedFailureOf strings sample =
-    FailedNested
+    Failed (FollowingNestedRule
         (List.foldl
             (\(str, sample) failures ->
-                failures ++ [ Failed (ExpectedValue str, sample) ])
+                failures ++ [ Failed (ByExpectation (ExpectedValue str, sample)) ])
             []
             strings
-        , sample)
+        , sample))
 
 expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
 expectToParse input output parser =
