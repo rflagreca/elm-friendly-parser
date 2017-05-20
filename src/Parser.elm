@@ -136,6 +136,10 @@ maybe : Operator -> Operator
 maybe operator =
     Maybe_ operator
 
+text : Operator -> Operator
+text operator =
+    TextOf operator
+
 -- OPERATORS EXECUTION
 
 execute : Operator -> Context o -> OperatorResult o
@@ -146,6 +150,7 @@ execute op ctx =
         Choice ops -> execChoice ops -- `choice`
         Sequence ops -> execSequence ops -- `seqnc`
         Maybe_ op -> execMaybe op -- `maybe`
+        TextOf op -> execTextOf op -- `text`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -234,6 +239,19 @@ execMaybe op ctx =
         case result of
             ( Matched s, newCtx ) -> matchedWith s newCtx
             _ -> matched "" ctx
+
+execTextOf : Operator -> Context o -> OperatorResult o
+execTextOf op ctx =
+    let
+        prevPos = ctx.position
+        result = execute op ctx
+    in
+        case result of
+            ( Matched s, newCtx ) ->
+                newCtx |> matchedWith
+                    (newCtx.adapt (AString
+                        (newCtx.input |> String.slice prevPos newCtx.position)))
+            failure -> failure
 
 -- UTILS
 

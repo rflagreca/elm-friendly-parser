@@ -114,6 +114,26 @@ testMaybeMatching =
                 (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "p") ])
         ]
 
+testTextMatching : Test
+testTextMatching =
+    describe "text matching"
+        [ test "matches when sample exists" <|
+            expectToParse
+                "foo"
+                "foo"
+                (BasicParser.start <| text (seqnc [ match "f", match "o", match "o" ]))
+        , test "matches when sample not exists" <|
+            expectToParse
+                "fo"
+                "fo"
+                (BasicParser.start <| text (seqnc [ match "f", match "o", maybe (match "o") ]))
+        , test "fails when nested operator is not matching" <|
+            expectToFailToParseWith
+                "bar"
+                ( Failed (ByExpectation ( ExpectedValue "f", GotValue "b" ) ) )
+                (BasicParser.start <| text ( seqnc [ match "f", match "o", match "o" ]))
+        ]
+
 -- UTILS
 
 nestedFailureOf : List (String, Sample) -> Sample -> BasicParser.ParseResult
