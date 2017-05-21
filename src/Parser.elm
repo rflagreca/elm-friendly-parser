@@ -163,7 +163,7 @@ execNextChar ctx =
     if (ctx.position >= ctx.inputLength) then
         ctx |> failedBy ExpectedAnything GotEndOfInput
     else
-        ctx |> matchedAdvance (getNextChar ctx) 1
+        ctx |> advanceBy 1 |> matched (getNextChar ctx)
 
 execMatch : String -> Context o -> OperatorResult o
 execMatch expectation ctx =
@@ -176,7 +176,7 @@ execMatch expectation ctx =
         else
             if (String.startsWith expectation
                 (ctx.input |> String.dropLeft ctx.position)) then
-                ctx |> matchedAdvance expectation expectationLength
+                ctx |> advanceBy expectationLength |> matched expectation
             else
                 ctx |> failedCC (ExpectedValue expectation)
 
@@ -236,7 +236,7 @@ execSequence ops ctx =
     in
         case maybeSequenceFailed of
             Just (Failed reason) -> ( Failed reason, ctx )
-            _ -> ctx |> matchedList matches
+            _ -> lastCtx |> matchedList matches
 
 execMaybe : Operator -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -255,9 +255,7 @@ execTextOf op ctx =
     in
         case result of
             ( Matched s, newCtx ) ->
-                newCtx |> matchedWith
-                    (newCtx.adapt (AString
-                        (newCtx.input |> String.slice prevPos newCtx.position)))
+                newCtx |> matched (newCtx.input |> String.slice prevPos newCtx.position)
             failure -> failure
 
 execAny : Operator -> Context o -> OperatorResult o
@@ -276,7 +274,7 @@ execAny op ctx =
     in
         case List.head result of
             Just ( v, lastCtx ) -> lastCtx |> matchedList (List.map Tuple.first result)
-            Nothing -> failedCC ExpectedAnything ctx
+            Nothing -> ctx |> matched ""
 
 -- UTILS
 
@@ -339,15 +337,11 @@ matchedWith output ctx =
 
 matched : String -> Context o -> OperatorResult o
 matched val ctx =
-    ( Matched (ctx.adapt (AString val)), ctx )
+    matchedWith (ctx.adapt (AString val)) ctx
 
 matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
-    ( Matched (ctx.adapt (AList val)), ctx )
-
-matchedAdvance : String -> Int -> Context o -> OperatorResult o
-matchedAdvance val count ctx =
-    ( Matched (ctx.adapt (AString val)), ctx |> advanceBy count )
+    matchedWith (ctx.adapt (AList val)) ctx
 
 failed : FailureReason o -> Context o -> OperatorResult o
 failed reason ctx =

@@ -150,12 +150,13 @@ testAnyMatching =
                 [ "f", "f", "f" ]
                 (BasicParser.start <| any (match "f"))
         , test "still matches when sample is not exits" <|
-            expectToParse
+            expectToParseNested
                 "bar"
-                "bar"
+                [ "", "bar" ]
                 (BasicParser.start <| seqnc [ any (match "f"), match "bar" ])
         ]
 
+-- TODO: Test position advances properly for all operators
 
 -- UTILS
 
