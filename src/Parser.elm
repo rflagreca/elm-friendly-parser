@@ -12,7 +12,7 @@ type OperatorType =
     | TextOf Operator -- 4. `text` -- DONE
     | Maybe_ Operator -- 5. `maybe` -- DONE
     | Some Operator -- 6. `some`
-    | Any Operator  -- 7. `any`
+    | Any Operator  -- 7. `any` -- DONE
     | And Operator -- 8. `and`
     | Not Operator -- 9. `not`
     | Sequence (List Operator) -- 10. `seqnc` -- DONE
@@ -144,6 +144,10 @@ any : Operator -> Operator
 any operator =
     Any operator
 
+some : Operator -> Operator
+some operator =
+    Some operator
+
 -- OPERATORS EXECUTION
 
 execute : Operator -> Context o -> OperatorResult o
@@ -156,6 +160,7 @@ execute op ctx =
         Maybe_ op -> execMaybe op -- `maybe`
         TextOf op -> execTextOf op -- `text`
         Any op -> execAny op -- `any`
+        Some op -> execSome op -- `some`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -255,7 +260,8 @@ execTextOf op ctx =
     in
         case result of
             ( Matched s, newCtx ) ->
-                newCtx |> matched (newCtx.input |> String.slice prevPos newCtx.position)
+                newCtx |> matched
+                    (newCtx.input |> String.slice prevPos newCtx.position)
             failure -> failure
 
 execAny : Operator -> Context o -> OperatorResult o
@@ -273,8 +279,19 @@ execAny op ctx =
         result = unfold op ctx
     in
         case List.head result of
-            Just ( v, lastCtx ) -> lastCtx |> matchedList (List.map Tuple.first result)
+            Just ( v, lastCtx ) -> lastCtx |> matchedList
+                                                (List.map Tuple.first result)
             Nothing -> ctx |> matched ""
+
+execSome : Operator -> Context o -> OperatorResult o
+execSome op ctx =
+    let
+        ( onceResult, nextCtx ) = (execute op ctx)
+
+    in
+        case onceResult of
+            Matched v -> execAny op nextCtx
+            failure -> ( failure, ctx )
 
 -- UTILS
 

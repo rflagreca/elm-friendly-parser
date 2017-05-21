@@ -16,6 +16,7 @@ suite =
         , testMaybeMatching
         , testTextMatching
         , testAnyMatching
+        , testSomeMatching
         ]
 
 testStartRule : Test
@@ -44,7 +45,7 @@ testBasicMatching =
 
 testChoiceMatching : Test
 testChoiceMatching =
-    describe "choice matching"
+    describe "`choice` matching"
         [ test "matches correctly" <|
             let
                 parser = BasicParser.start <| choice [ match "a", match "b", match "c" ]
@@ -79,7 +80,7 @@ testChoiceMatching =
 
 testSequenceMatching : Test
 testSequenceMatching =
-    describe "sequence matching"
+    describe "`seqnc` matching"
         [ test "matches correctly" <|
             expectToParseNested
                 "foo"
@@ -98,7 +99,7 @@ testSequenceMatching =
 
 testMaybeMatching : Test
 testMaybeMatching =
-    describe "maybe matching"
+    describe "`maybe` matching"
         [ test "matches when sample exists" <|
             expectToParseNested
                 "foo"
@@ -118,7 +119,7 @@ testMaybeMatching =
 
 testTextMatching : Test
 testTextMatching =
-    describe "text matching"
+    describe "`text` matching"
         [ test "matches when sample exists" <|
             expectToParse
                 "foo"
@@ -138,7 +139,7 @@ testTextMatching =
 
 testAnyMatching : Test
 testAnyMatching =
-    describe "any matching"
+    describe "`any` matching"
         [ test "matches when sample exists" <|
             expectToParseNested
                 "f"
@@ -154,6 +155,26 @@ testAnyMatching =
                 "bar"
                 [ "", "bar" ]
                 (BasicParser.start <| seqnc [ any (match "f"), match "bar" ])
+        ]
+
+testSomeMatching : Test
+testSomeMatching =
+    describe "`some` matching"
+        [ test "matches when sample exists" <|
+            expectToParseNested
+                "f"
+                [ "f" ]
+                (BasicParser.start <| some (match "f"))
+        , test "matches when sample exists several times" <|
+            expectToParseNested
+                "fff"
+                [ "f", "f", "f" ]
+                (BasicParser.start <| some (match "f"))
+        , test "not matches when sample is not exits" <|
+            expectToFailToParseWith
+                "bar"
+                ( Failed (ByExpectation ( ExpectedValue "f", GotValue "b" ) ) )
+                (BasicParser.start <| seqnc [ some (match "f"), match "bar" ])
         ]
 
 -- TODO: Test position advances properly for all operators
