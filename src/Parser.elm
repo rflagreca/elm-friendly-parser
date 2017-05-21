@@ -9,8 +9,8 @@ type OperatorType =
       NextChar -- 1. `ch` -- DONE
     | Match String -- 2. `match` -- DONE
     | Regex String String -- 3. `re`
-    | TextOf Operator -- 4. `text`
-    | Maybe_ Operator -- 5. `maybe`
+    | TextOf Operator -- 4. `text` -- DONE
+    | Maybe_ Operator -- 5. `maybe` -- DONE
     | Some Operator -- 6. `some`
     | Any Operator  -- 7. `any`
     | And Operator -- 8. `and`
@@ -140,6 +140,10 @@ text : Operator -> Operator
 text operator =
     TextOf operator
 
+any : Operator -> Operator
+any operator =
+    Any operator
+
 -- OPERATORS EXECUTION
 
 execute : Operator -> Context o -> OperatorResult o
@@ -151,6 +155,7 @@ execute op ctx =
         Sequence ops -> execSequence ops -- `seqnc`
         Maybe_ op -> execMaybe op -- `maybe`
         TextOf op -> execTextOf op -- `text`
+        Any op -> execAny op -- `any`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -174,6 +179,8 @@ execMatch expectation ctx =
                 ctx |> matchedAdvance expectation expectationLength
             else
                 ctx |> failedCC (ExpectedValue expectation)
+
+-- FIXME: http://folkertdev.nl/blog/loops-to-folds/
 
 execChoice : List Operator -> Context o -> OperatorResult o
 execChoice ops ctx =
@@ -252,6 +259,24 @@ execTextOf op ctx =
                     (newCtx.adapt (AString
                         (newCtx.input |> String.slice prevPos newCtx.position)))
             failure -> failure
+
+execAny : Operator -> Context o -> OperatorResult o
+execAny op ctx =
+    let
+        prevPos = ctx.position
+        unfold = (\op ctx ->
+            let
+                ( mayBeMatched, nextCtx ) = ( execute op ctx )
+            in
+                case mayBeMatched of
+                    Matched v -> [ ( v, nextCtx ) ] ++ (unfold op nextCtx)
+                    _ -> []
+            )
+        result = unfold op ctx
+    in
+        case List.head result of
+            Just ( v, lastCtx ) -> lastCtx |> matchedList (List.map Tuple.first result)
+            Nothing -> failedCC ExpectedAnything ctx
 
 -- UTILS
 

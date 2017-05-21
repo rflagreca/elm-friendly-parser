@@ -14,6 +14,8 @@ suite =
         , testChoiceMatching
         , testSequenceMatching
         , testMaybeMatching
+        , testTextMatching
+        , testAnyMatching
         ]
 
 testStartRule : Test
@@ -122,7 +124,7 @@ testTextMatching =
                 "foo"
                 "foo"
                 (BasicParser.start <| text (seqnc [ match "f", match "o", match "o" ]))
-        , test "matches when sample not exists" <|
+        , test "still matches when a part of a sample not exists" <|
             expectToParse
                 "fo"
                 "fo"
@@ -133,6 +135,27 @@ testTextMatching =
                 ( Failed (ByExpectation ( ExpectedValue "f", GotValue "b" ) ) )
                 (BasicParser.start <| text ( seqnc [ match "f", match "o", match "o" ]))
         ]
+
+testAnyMatching : Test
+testAnyMatching =
+    describe "any matching"
+        [ test "matches when sample exists" <|
+            expectToParseNested
+                "f"
+                [ "f" ]
+                (BasicParser.start <| any (match "f"))
+        , test "matches when sample exists several times" <|
+            expectToParseNested
+                "fff"
+                [ "f", "f", "f" ]
+                (BasicParser.start <| any (match "f"))
+        , test "still matches when sample is not exits" <|
+            expectToParse
+                "bar"
+                "bar"
+                (BasicParser.start <| seqnc [ any (match "f"), match "bar" ])
+        ]
+
 
 -- UTILS
 
