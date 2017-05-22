@@ -22,7 +22,7 @@ withRules rules =
 adapter : InputType ReturnType -> ReturnType
 adapter input =
     case input of
-        Parser.AString str -> RString str
+        Parser.AValue str -> RString str
         Parser.AList list -> RList list
 
 toString : ReturnType -> String

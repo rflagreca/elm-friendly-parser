@@ -29,7 +29,7 @@ type alias Operator = OperatorType
 
 type alias RuleName = String
 
-type InputType o = AString String | AList (List o)
+type InputType o = AValue String | AList (List o)
 
 -- type alias Chunk = ( Int, String )
 
@@ -287,10 +287,13 @@ execSome : Operator -> Context o -> OperatorResult o
 execSome op ctx =
     let
         ( onceResult, nextCtx ) = (execute op ctx)
-
     in
         case onceResult of
-            Matched v -> execAny op nextCtx
+            Matched v ->
+                let
+                    ( anyResult, lastCtx ) = (execAny op nextCtx)
+                in
+                    combine onceResult anyResult lastCtx
             failure -> ( failure, ctx )
 
 -- UTILS
@@ -354,7 +357,7 @@ matchedWith output ctx =
 
 matched : String -> Context o -> OperatorResult o
 matched val ctx =
-    matchedWith (ctx.adapt (AString val)) ctx
+    matchedWith (ctx.adapt (AValue val)) ctx
 
 matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
@@ -398,5 +401,11 @@ parseResultToMaybe result =
     case result of
         Matched v -> Just v
         _ -> Nothing
+
+combine : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
+combine resultOne resultTwo inContext =
+    case ( resultOne, resultTwo ) of
+        ( Matched vOne, Matched vTwo ) -> matchedList [ vOne, vTwo ] inContext
+        _ -> ( resultTwo, inContext )
 
 -- parseResultToMaybeInv : ParseResult o -> Maybe o

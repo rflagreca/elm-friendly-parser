@@ -42,7 +42,7 @@ testAdapters =
                 (Parser.start
                     (match "abc")
                     (\v -> case v of
-                        Parser.AString s -> (s ++ "d")
+                        Parser.AValue s -> (s ++ "d")
                         _ -> "failed"))
         ]
 
