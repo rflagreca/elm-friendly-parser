@@ -11,10 +11,10 @@ type OperatorType =
     | Regex String String -- 3. `re`
     | TextOf Operator -- 4. `text` -- DONE
     | Maybe_ Operator -- 5. `maybe` -- DONE
-    | Some Operator -- 6. `some`
+    | Some Operator -- 6. `some` -- 1/2 DONE
     | Any Operator  -- 7. `any` -- DONE
-    | And Operator -- 8. `and`
-    | Not Operator -- 9. `not`
+    | And Operator -- 8. `and` -- DONE
+    | Not Operator -- 9. `not` -- DONE
     | Sequence (List Operator) -- 10. `seqnc` -- DONE
     | Choice (List Operator) -- 11. `choice` -- DONE
     | Action Operator UserCode -- 12. `action`
@@ -148,6 +148,14 @@ some : Operator -> Operator
 some operator =
     Some operator
 
+and : Operator -> Operator
+and operator =
+    And operator
+
+not : Operator -> Operator
+not operator =
+    Not operator
+
 -- OPERATORS EXECUTION
 
 execute : Operator -> Context o -> OperatorResult o
@@ -161,6 +169,8 @@ execute op ctx =
         TextOf op -> execTextOf op -- `text`
         Any op -> execAny op -- `any`
         Some op -> execSome op -- `some`
+        And op -> execAnd op -- `and`
+        Not op -> execNot op -- `not`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -279,8 +289,8 @@ execAny op ctx =
         result = unfold op ctx
     in
         case List.head result of
-            Just ( v, lastCtx ) -> lastCtx |> matchedList
-                                                (List.map Tuple.first result)
+            -- FIXME: store only the last context, not the context for every operation
+            Just ( v, lastCtx ) -> matchedList (List.map Tuple.first result) lastCtx
             Nothing -> ctx |> matched ""
 
 execSome : Operator -> Context o -> OperatorResult o
@@ -295,6 +305,24 @@ execSome op ctx =
                 in
                     combine onceResult anyResult lastCtx
             failure -> ( failure, ctx )
+
+execAnd : Operator -> Context o -> OperatorResult o
+execAnd op ctx =
+    let
+        ( result, newCtx ) = (execute op ctx)
+    in
+        case result of
+            Matched v -> matched "" ctx
+            failure -> ( failure, newCtx )
+
+execNot : Operator -> Context o -> OperatorResult o
+execNot op ctx =
+    let
+        ( result, newCtx ) = (execute op ctx)
+    in
+        case result of
+            Matched _ -> newCtx |> failedCC ExpectedEndOfInput
+            failure -> matched "" ctx
 
 -- UTILS
 
@@ -363,6 +391,10 @@ matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
     matchedWith (ctx.adapt (AList val)) ctx
 
+-- matchedFlatList : List o -> Context o -> OperatorResult o
+-- matchedFlatList val ctx =
+--     matchedWith (ctx.flatten (AList val)) ctx
+
 failed : FailureReason o -> Context o -> OperatorResult o
 failed reason ctx =
     ( Failed reason, ctx )
@@ -405,7 +437,8 @@ parseResultToMaybe result =
 combine : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
 combine resultOne resultTwo inContext =
     case ( resultOne, resultTwo ) of
-        ( Matched vOne, Matched vTwo ) -> matchedList [ vOne, vTwo ] inContext
+        ( Matched vOne, Matched vTwo ) ->
+            matchedList [ vOne, vTwo ] inContext
         _ -> ( resultTwo, inContext )
 
 -- parseResultToMaybeInv : ParseResult o -> Maybe o

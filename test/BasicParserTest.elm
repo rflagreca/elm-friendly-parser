@@ -17,6 +17,8 @@ suite =
         , testTextMatching
         , testAnyMatching
         , testSomeMatching
+        , testAndMatching
+        , testNotMatching
         ]
 
 testStartRule : Test
@@ -175,6 +177,36 @@ testSomeMatching =
                 "bar"
                 ( Failed (ByExpectation ( ExpectedValue "f", GotValue "b" ) ) )
                 (BasicParser.start <| seqnc [ some (match "f"), match "bar" ])
+        ]
+
+testAndMatching : Test
+testAndMatching =
+    describe "`and` matching"
+        [ test "matches when sample exists" <|
+            expectToParse
+                "foo"
+                ""
+                (BasicParser.start <| and (match "foo"))
+        , test "fails when sample not exists" <|
+            expectToFailToParseWith
+                "bar"
+                ( Failed (ByExpectation ( ExpectedValue "foo", GotValue "b" ) ) )
+                (BasicParser.start <| and (match "foo"))
+        ]
+
+testNotMatching : Test
+testNotMatching =
+    describe "`not` matching"
+        [ test "fails when sample exists" <|
+            expectToFailToParseWith
+                "foo"
+                ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "" ) ) )
+                (BasicParser.start <| Parser.not (match "foo"))
+        , test "matches when sample not exists" <|
+            expectToParse
+                "bar"
+                ""
+                (BasicParser.start <| Parser.not (match "foo"))
         ]
 
 -- TODO: Test position advances properly for all operators
