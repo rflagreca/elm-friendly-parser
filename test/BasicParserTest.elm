@@ -19,6 +19,7 @@ suite =
         , testSomeMatching
         , testAndMatching
         , testNotMatching
+        , testActionMatching
         ]
 
 testStartRule : Test
@@ -207,6 +208,44 @@ testNotMatching =
                 "bar"
                 ""
                 (BasicParser.start <| Parser.not (match "foo"))
+        ]
+
+testActionMatching : Test
+testActionMatching =
+    describe "`action` matching"
+        [ test "allows executing user-defined code" <|
+            expectToParse
+                "foo"
+                "magic"
+                (BasicParser.start <| action (match "foo")
+                    (\match ctx -> Matched (BasicParser.RString "magic")))
+        , test "provides access to the matched chunk" <|
+            expectToParse
+                "foo"
+                "foomagic"
+                (BasicParser.start <| action (match "foo")
+                    (\match ctx ->
+                        case match of
+                            BasicParser.RString str ->
+                                Matched (BasicParser.RString (str ++ "magic"))
+                            BasicParser.RList list -> Matched (BasicParser.RList list)))
+        , test "provides access to the position" <|
+            expectToParse
+                "foo"
+                "3"
+                (BasicParser.start <| action (match "foo")
+                    (\match ctx ->
+                        case match of
+                            BasicParser.RString str ->
+                                Matched (BasicParser.RString (Basics.toString (ctx.position)))
+                            BasicParser.RList list -> Matched (BasicParser.RList list)))
+        , test "fails when user-code returned failure even if match is successful by itself" <|
+            expectToFailToParseWith
+                "foo"
+                (Failed SomethingWasNotImplemented)
+                (BasicParser.start <| action (match "foo")
+                    (\match ctx -> (Failed SomethingWasNotImplemented)))
+        -- TODO
         ]
 
 -- TODO: Test position advances properly for all operators

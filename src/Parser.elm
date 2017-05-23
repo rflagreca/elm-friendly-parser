@@ -3,29 +3,29 @@ module Parser exposing (..)
 import Dict exposing (..)
 import Utils exposing (..)
 
-type alias UserCode = (ParseResult -> Operator)
+type alias UserCode o = (o -> Context o -> ParseResult o)
 
-type OperatorType =
+type OperatorType o =
       NextChar -- 1. `ch` -- DONE
     | Match String -- 2. `match` -- DONE
     | Regex String String -- 3. `re`
-    | TextOf Operator -- 4. `text` -- DONE
-    | Maybe_ Operator -- 5. `maybe` -- DONE
-    | Some Operator -- 6. `some` -- 1/2 DONE
-    | Any Operator  -- 7. `any` -- DONE
-    | And Operator -- 8. `and` -- DONE
-    | Not Operator -- 9. `not` -- DONE
-    | Sequence (List Operator) -- 10. `seqnc` -- DONE
-    | Choice (List Operator) -- 11. `choice` -- DONE
-    | Action Operator UserCode -- 12. `action`
-    | PreExec UserCode -- 13. `pre`
-    | NegPreExec UserCode -- 14. `xpre`
-    | Label String Operator -- 15. `label`
-    | Rule String Operator -- 16. `rule`
+    | TextOf (Operator o) -- 4. `text` -- DONE
+    | Maybe_ (Operator o) -- 5. `maybe` -- DONE
+    | Some (Operator o) -- 6. `some` -- 1/2 DONE
+    | Any (Operator o)  -- 7. `any` -- DONE
+    | And (Operator o) -- 8. `and` -- DONE
+    | Not (Operator o) -- 9. `not` -- DONE
+    | Sequence (List (Operator o)) -- 10. `seqnc` -- DONE
+    | Choice (List (Operator o)) -- 11. `choice` -- DONE
+    | Action (Operator o) (UserCode o) -- 12. `action`
+    | PreExec (UserCode o) -- 13. `pre`
+    | NegPreExec (UserCode o) -- 14. `xpre`
+    | Label String (Operator o) -- 15. `label`
+    | Rule String (Operator o) -- 16. `rule`
     | RuleReference String -- 17. `ref`
-    | Alias String Operator -- 18. `as`
+    | Alias String (Operator o) -- 18. `as`
 
-type alias Operator = OperatorType
+type alias Operator o = OperatorType o
 
 type alias RuleName = String
 
@@ -37,7 +37,7 @@ type alias Adapter o = (InputType o -> o)
 
 type alias Parser o = {
     adapt: Adapter o,
-    rules: Rules
+    rules: Rules o
 }
 
 type Expectation =
@@ -72,14 +72,15 @@ type alias Context o =
     { input: String
     , inputLength: Int
     , position: Int
-    , rules: Rules
+--    , previousPosition: Int
+    , rules: Rules o
     , values: Values o
     , adapt: Adapter o
 }
 
 type alias OperatorResult o = (ParseResult o, Context o)
 
-type alias Rules = Dict String Operator
+type alias Rules o = Dict String (Operator o)
 type alias Values o = Dict String o
 
 parse : Parser o -> String -> ParseResult o
@@ -94,20 +95,20 @@ parse parser input =
 
 -- RULES
 
-noRules : Rules
+noRules : Rules o
 noRules = Dict.empty
 
-withRules : Rules -> Adapter o -> Parser o
+withRules : Rules o -> Adapter o -> Parser o
 withRules rules adapter =
     { adapt = adapter
     , rules = rules
     }
 
-addRule : String -> Operator -> Rules -> Rules
+addRule : String -> Operator o -> Rules o -> Rules o
 addRule name op rules =
     rules |> Dict.insert name op
 
-start : Operator -> Adapter o -> Parser o
+start : Operator o -> Adapter o -> Parser o
 start op adapter =
     let
         justStartRule = (noRules |> addRule "start" op)
@@ -116,49 +117,53 @@ start op adapter =
 
 -- OPERATORS
 
-ch : Operator
+ch : Operator o
 ch =
     NextChar
 
-match : String -> Operator
+match : String -> Operator o
 match subject =
     Match subject
 
-choice : List Operator -> Operator
+choice : List (Operator o) -> Operator o
 choice operators =
     Choice operators
 
-seqnc : List Operator -> Operator
+seqnc : List (Operator o) -> Operator o
 seqnc operators =
     Sequence operators
 
-maybe : Operator -> Operator
+maybe : Operator o -> Operator o
 maybe operator =
     Maybe_ operator
 
-text : Operator -> Operator
+text : Operator o -> Operator o
 text operator =
     TextOf operator
 
-any : Operator -> Operator
+any : Operator o -> Operator o
 any operator =
     Any operator
 
-some : Operator -> Operator
+some : Operator o -> Operator o
 some operator =
     Some operator
 
-and : Operator -> Operator
+and : Operator o -> Operator o
 and operator =
     And operator
 
-not : Operator -> Operator
+not : Operator o -> Operator o
 not operator =
     Not operator
 
+action : Operator o -> UserCode o -> Operator o
+action operator userCode =
+    Action operator userCode
+
 -- OPERATORS EXECUTION
 
-execute : Operator -> Context o -> OperatorResult o
+execute : Operator o -> Context o -> OperatorResult o
 execute op ctx =
     ctx |> case op of
         NextChar -> execNextChar -- `ch`
@@ -171,6 +176,7 @@ execute op ctx =
         Some op -> execSome op -- `some`
         And op -> execAnd op -- `and`
         Not op -> execNot op -- `not`
+        Action op uc -> execAction op uc -- `action`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -197,7 +203,7 @@ execMatch expectation ctx =
 
 -- FIXME: http://folkertdev.nl/blog/loops-to-folds/
 
-execChoice : List Operator -> Context o -> OperatorResult o
+execChoice : List (Operator o) -> Context o -> OperatorResult o
 execChoice ops ctx =
     let
         reducedReport =
@@ -225,7 +231,7 @@ execChoice ops ctx =
             Just (Matched success) -> ( Matched success, lastCtx )
             _ -> ctx |> failedNestedCC failures
 
-execSequence : List Operator -> Context o -> OperatorResult o
+execSequence : List (Operator o) -> Context o -> OperatorResult o
 execSequence ops ctx =
     let
         reducedReport =
@@ -253,7 +259,7 @@ execSequence ops ctx =
             Just (Failed reason) -> ( Failed reason, ctx )
             _ -> lastCtx |> matchedList matches
 
-execMaybe : Operator -> Context o -> OperatorResult o
+execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
     let
         result = execute op ctx
@@ -262,7 +268,7 @@ execMaybe op ctx =
             ( Matched s, newCtx ) -> matchedWith s newCtx
             _ -> matched "" ctx
 
-execTextOf : Operator -> Context o -> OperatorResult o
+execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
     let
         prevPos = ctx.position
@@ -274,7 +280,7 @@ execTextOf op ctx =
                     (newCtx.input |> String.slice prevPos newCtx.position)
             failure -> failure
 
-execAny : Operator -> Context o -> OperatorResult o
+execAny : Operator o -> Context o -> OperatorResult o
 execAny op ctx =
     let
         prevPos = ctx.position
@@ -293,7 +299,7 @@ execAny op ctx =
             Just ( v, lastCtx ) -> matchedList (List.map Tuple.first result) lastCtx
             Nothing -> ctx |> matched ""
 
-execSome : Operator -> Context o -> OperatorResult o
+execSome : Operator o -> Context o -> OperatorResult o
 execSome op ctx =
     let
         ( onceResult, nextCtx ) = (execute op ctx)
@@ -306,7 +312,7 @@ execSome op ctx =
                     combine onceResult anyResult lastCtx
             failure -> ( failure, ctx )
 
-execAnd : Operator -> Context o -> OperatorResult o
+execAnd : Operator o -> Context o -> OperatorResult o
 execAnd op ctx =
     let
         ( result, newCtx ) = (execute op ctx)
@@ -315,7 +321,7 @@ execAnd op ctx =
             Matched v -> matched "" ctx
             failure -> ( failure, newCtx )
 
-execNot : Operator -> Context o -> OperatorResult o
+execNot : Operator o -> Context o -> OperatorResult o
 execNot op ctx =
     let
         ( result, newCtx ) = (execute op ctx)
@@ -323,6 +329,15 @@ execNot op ctx =
         case result of
             Matched _ -> newCtx |> failedCC ExpectedEndOfInput
             failure -> matched "" ctx
+
+execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
+execAction op userCode ctx =
+    let
+        ( result, newCtx ) = (execute op ctx)
+    in
+        case result of
+            Matched v -> ( (userCode v newCtx), newCtx )
+            _ -> ( result, newCtx )
 
 -- UTILS
 
@@ -339,7 +354,7 @@ initContext adapter input =
     , adapt = adapter
     }
 
-getStartRule : Parser o -> Maybe Operator
+getStartRule : Parser o -> Maybe (Operator o)
 getStartRule parser =
     Dict.get "start" parser.rules
 

@@ -11,11 +11,11 @@ type alias BasicParser = Parser.Parser ReturnType
 
 type alias ParseResult = Parser.ParseResult ReturnType
 
-start : Operator -> BasicParser
+start : Operator ReturnType -> BasicParser
 start op =
     Parser.start op adapter
 
-withRules : Parser.Rules -> BasicParser
+withRules : Parser.Rules ReturnType -> BasicParser
 withRules rules =
     Parser.withRules rules adapter
 
