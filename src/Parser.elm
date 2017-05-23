@@ -3,7 +3,7 @@ module Parser exposing (..)
 import Dict exposing (..)
 import Utils exposing (..)
 
-type alias UserCode o = (o -> Context o -> ParseResult o)
+type alias UserCode o = (o -> Context o -> (Maybe o))
 type alias UserPrefixCode o = (Context o -> Bool)
 
 type OperatorType o =
@@ -22,8 +22,8 @@ type OperatorType o =
     | PreExec (UserPrefixCode o) -- 13. `pre` -- DONE
     | NegPreExec (UserPrefixCode o) -- 14. `xpre` -- DONE
     | Label String (Operator o) -- 15. `label` -- DONE
-    | Rule String (Operator o) -- 16. `rule`
-    | RuleReference String -- 17. `ref`
+    | Rule RuleName (Operator o) -- 16. `rule`
+    | RuleReference RuleName -- 17. `ref`
     | Alias String (Operator o) -- 18. `as`
 
 type alias Operator o = OperatorType o
@@ -352,7 +352,10 @@ execAction op userCode ctx =
         ( result, newCtx ) = (execute op ctx)
     in
         case result of
-            Matched v -> ( (userCode v newCtx), newCtx )
+            Matched v ->
+                case (userCode v newCtx) of
+                    Just userV -> ( Matched userV, newCtx )
+                    Nothing -> newCtx |> failedCC ExpectedAnything
             _ -> ( result, newCtx )
 
 execPre : UserPrefixCode o -> Context o -> OperatorResult o

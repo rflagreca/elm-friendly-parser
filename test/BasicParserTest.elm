@@ -228,7 +228,7 @@ testActionMatching =
                 "foo"
                 "magic"
                 (BasicParser.start <| action (match "foo")
-                    (\match ctx -> Matched (BasicParser.RString "magic")))
+                    (\match ctx -> Just (BasicParser.RString "magic")))
         , test "provides access to the matched chunk" <|
             expectToParse
                 "foo"
@@ -237,8 +237,8 @@ testActionMatching =
                     (\match ctx ->
                         case match of
                             BasicParser.RString str ->
-                                Matched (BasicParser.RString (str ++ "magic"))
-                            BasicParser.RList list -> Matched (BasicParser.RList list)))
+                                Just (BasicParser.RString (str ++ "magic"))
+                            BasicParser.RList list -> Just (BasicParser.RList list)))
         , test "provides access to the position" <|
             expectToParse
                 "foo"
@@ -247,14 +247,14 @@ testActionMatching =
                     (\match ctx ->
                         case match of
                             BasicParser.RString str ->
-                                Matched (BasicParser.RString (Basics.toString (ctx.position)))
-                            BasicParser.RList list -> Matched (BasicParser.RList list)))
+                                Just (BasicParser.RString (Basics.toString (ctx.position)))
+                            BasicParser.RList list -> Just (BasicParser.RList list)))
         , test "fails when user-code returned failure even if match is successful by itself" <|
             expectToFailToParseWith
                 "foo"
-                (Failed SomethingWasNotImplemented)
+                ( Failed ( ByExpectation ( ExpectedAnything, GotValue "" ) ) )
                 (BasicParser.start <| action (match "foo")
-                    (\match ctx -> (Failed SomethingWasNotImplemented)))
+                    (\match ctx -> Nothing))
         -- TODO: lists etc.
         ]
 
@@ -333,10 +333,7 @@ testLabelMatching =
                         [ label "xyz" (match "foo")
                         , match "bar"
                         , action (match "x")
-                                 (\val ctx ->
-                                    case (Dict.get "xyz" ctx.values) of
-                                        Just val -> Matched val
-                                        Nothing -> Failed SomethingWasNotImplemented)
+                                 (\val ctx -> Dict.get "xyz" ctx.values)
                         ])
         , test "still fails when match failed" <|
             expectToFailToParse
@@ -346,7 +343,7 @@ testLabelMatching =
         , test "not stores the value when match failed" <|
             expectToParseNested
                 "forbarx"
-                [ "", "for", "bar", "--" ]
+                [ "", "for", "bar", "OK" ]
                 (BasicParser.start <|
                     seqnc
                         [ label "xyz" (maybe (match "foo"))
@@ -355,8 +352,8 @@ testLabelMatching =
                         , action (match "x")
                                  (\val ctx ->
                                     case (Dict.get "xyz" ctx.values) of
-                                        Just val -> Matched val
-                                        Nothing -> Matched (RString "--"))
+                                        Just val -> Just (RString "!OK")
+                                        Nothing -> Just (RString "OK"))
                         ])
         ]
 
