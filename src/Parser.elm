@@ -21,7 +21,7 @@ type OperatorType o =
     | Action (Operator o) (UserCode o) -- 12. `action` -- DONE
     | PreExec (UserPrefixCode o) -- 13. `pre` -- DONE
     | NegPreExec (UserPrefixCode o) -- 14. `xpre` -- DONE
-    | Label String (Operator o) -- 15. `label`
+    | Label String (Operator o) -- 15. `label` -- DONE
     | Rule String (Operator o) -- 16. `rule`
     | RuleReference String -- 17. `ref`
     | Alias String (Operator o) -- 18. `as`
@@ -170,6 +170,10 @@ xpre : UserPrefixCode o -> Operator o
 xpre userCode =
     NegPreExec userCode
 
+label : String -> Operator o -> Operator o
+label name operator =
+    Label name operator
+
 -- OPERATORS EXECUTION
 
 execute : Operator o -> Context o -> OperatorResult o
@@ -188,6 +192,7 @@ execute op ctx =
         Action op uc -> execAction op uc -- `action`
         PreExec uc -> execPre uc -- `pre`
         NegPreExec uc -> execNegPre uc -- `xpre`
+        Label n op -> execLabel n op -- `label`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -367,6 +372,18 @@ execNegPre userCode ctx =
         case result of
             True -> ctx |> failedCC ExpectedEndOfInput
             False -> ctx |> matched ""
+
+execLabel : String -> Operator o -> Context o -> OperatorResult o
+execLabel name op ctx =
+    let
+        ( result, newCtx ) = (execute op ctx)
+        updatedCtx =
+            case result of
+                Matched v ->
+                    { newCtx | values = newCtx.values |> Dict.insert name v }
+                _ -> newCtx
+    in
+        ( result, updatedCtx )
 
 -- UTILS
 

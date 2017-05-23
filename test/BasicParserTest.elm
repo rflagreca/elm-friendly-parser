@@ -1,5 +1,7 @@
 module BasicParserTest exposing (suite)
 
+import Dict
+
 import Test exposing (..)
 import Expect
 
@@ -22,6 +24,7 @@ suite =
         , testActionMatching
         , testPreMatching
         , testNegPreMatching
+        , testLabelMatching
         ]
 
 testStartRule : Test
@@ -46,6 +49,11 @@ testBasicMatching =
             expectToFailToParse
                 "ab"
                 (BasicParser.start <| (match "abc"))
+        , test "reports the failed match properly" <|
+            expectToFailToParseWith
+                "for"
+                ( Failed (ByExpectation (ExpectedValue "foo", GotValue "for") ) )
+                (BasicParser.start <| (match "foo"))
         ]
 
 testChoiceMatching : Test
@@ -306,6 +314,50 @@ testNegPreMatching =
                     [ xpre (\ctx -> ctx.position /= 0)
                     , (match "foo")
                     ])
+        ]
+
+testLabelMatching : Test
+testLabelMatching =
+    describe "`label` matching"
+        [ test "works transparently for a parser" <|
+            expectToParse
+                "foo"
+                "foo"
+                (BasicParser.start <| label "bar" (match "foo"))
+        , test "actually stores the value under the given name" <|
+            expectToParseNested
+                "foobarx"
+                [ "foo", "bar", "foo" ]
+                (BasicParser.start <|
+                    seqnc
+                        [ label "xyz" (match "foo")
+                        , match "bar"
+                        , action (match "x")
+                                 (\val ctx ->
+                                    case (Dict.get "xyz" ctx.values) of
+                                        Just val -> Matched val
+                                        Nothing -> Failed SomethingWasNotImplemented)
+                        ])
+        , test "still fails when match failed" <|
+            expectToFailToParse
+                "foo"
+                (BasicParser.start <|
+                    label "xyz" (match "for"))
+        , test "not stores the value when match failed" <|
+            expectToParseNested
+                "forbarx"
+                [ "", "for", "bar", "--" ]
+                (BasicParser.start <|
+                    seqnc
+                        [ label "xyz" (maybe (match "foo"))
+                        , match "for"
+                        , match "bar"
+                        , action (match "x")
+                                 (\val ctx ->
+                                    case (Dict.get "xyz" ctx.values) of
+                                        Just val -> Matched val
+                                        Nothing -> Matched (RString "--"))
+                        ])
         ]
 
 -- TODO: Test position advances properly for all operators
