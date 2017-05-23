@@ -78,3 +78,5 @@ expectToFailToParseWith input output parser =
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
                 r -> Expect.equal output r
+
+-- TODO: test actions with custom parsers

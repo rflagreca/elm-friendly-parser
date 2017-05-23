@@ -4,6 +4,7 @@ import Dict exposing (..)
 import Utils exposing (..)
 
 type alias UserCode o = (o -> Context o -> ParseResult o)
+type alias UserPrefixCode o = (Context o -> Bool)
 
 type OperatorType o =
       NextChar -- 1. `ch` -- DONE
@@ -17,9 +18,9 @@ type OperatorType o =
     | Not (Operator o) -- 9. `not` -- DONE
     | Sequence (List (Operator o)) -- 10. `seqnc` -- DONE
     | Choice (List (Operator o)) -- 11. `choice` -- DONE
-    | Action (Operator o) (UserCode o) -- 12. `action`
-    | PreExec (UserCode o) -- 13. `pre`
-    | NegPreExec (UserCode o) -- 14. `xpre`
+    | Action (Operator o) (UserCode o) -- 12. `action` -- DONE
+    | PreExec (UserPrefixCode o) -- 13. `pre` -- DONE
+    | NegPreExec (UserPrefixCode o) -- 14. `xpre` -- DONE
     | Label String (Operator o) -- 15. `label`
     | Rule String (Operator o) -- 16. `rule`
     | RuleReference String -- 17. `ref`
@@ -161,6 +162,14 @@ action : Operator o -> UserCode o -> Operator o
 action operator userCode =
     Action operator userCode
 
+pre : UserPrefixCode o -> Operator o
+pre userCode =
+    PreExec userCode
+
+xpre : UserPrefixCode o -> Operator o
+xpre userCode =
+    NegPreExec userCode
+
 -- OPERATORS EXECUTION
 
 execute : Operator o -> Context o -> OperatorResult o
@@ -177,6 +186,8 @@ execute op ctx =
         And op -> execAnd op -- `and`
         Not op -> execNot op -- `not`
         Action op uc -> execAction op uc -- `action`
+        PreExec uc -> execPre uc -- `pre`
+        NegPreExec uc -> execNegPre uc -- `xpre`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -338,6 +349,24 @@ execAction op userCode ctx =
         case result of
             Matched v -> ( (userCode v newCtx), newCtx )
             _ -> ( result, newCtx )
+
+execPre : UserPrefixCode o -> Context o -> OperatorResult o
+execPre userCode ctx =
+    let
+        result = (userCode ctx)
+    in
+        case result of
+            True -> ctx |> matched ""
+            False -> ctx |> failedCC ExpectedEndOfInput
+
+execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
+execNegPre userCode ctx =
+    let
+        result = (userCode ctx)
+    in
+        case result of
+            True -> ctx |> failedCC ExpectedEndOfInput
+            False -> ctx |> matched ""
 
 -- UTILS
 

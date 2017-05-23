@@ -20,6 +20,8 @@ suite =
         , testAndMatching
         , testNotMatching
         , testActionMatching
+        , testPreMatching
+        , testNegPreMatching
         ]
 
 testStartRule : Test
@@ -245,7 +247,65 @@ testActionMatching =
                 (Failed SomethingWasNotImplemented)
                 (BasicParser.start <| action (match "foo")
                     (\match ctx -> (Failed SomethingWasNotImplemented)))
-        -- TODO
+        -- TODO: lists etc.
+        ]
+
+testPreMatching : Test
+testPreMatching =
+    describe "`pre` matching"
+        [ test "allows executing user-defined code and passes when it returned True" <|
+            expectToParseNested
+                "foo"
+                [ "", "foo" ]
+                (BasicParser.start <| seqnc
+                    [ pre (\_ -> True)
+                    , (match "foo")
+                    ])
+        , test "fails when user-code returned False" <|
+            expectToFailToParseWith
+                "foo"
+                ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "f" ) ) )
+                (BasicParser.start <| seqnc
+                    [ pre (\_ -> False)
+                    , (match "foo")
+                    ])
+        , test "provides access to the position" <|
+            expectToParseNested
+                "foo"
+                [ "", "foo" ]
+                (BasicParser.start <| seqnc
+                    [ pre (\ctx -> ctx.position == 0)
+                    , (match "foo")
+                    ])
+        ]
+
+testNegPreMatching : Test
+testNegPreMatching =
+    describe "`xpre` matching"
+        [ test "allows executing user-defined code and passes when it returned False" <|
+            expectToParseNested
+                "foo"
+                [ "", "foo" ]
+                (BasicParser.start <| seqnc
+                    [ xpre (\_ -> False)
+                    , (match "foo")
+                    ])
+        , test "fails when user-code returned True" <|
+            expectToFailToParseWith
+                "foo"
+                ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "f" ) ) )
+                (BasicParser.start <| seqnc
+                    [ xpre (\_ -> True)
+                    , (match "foo")
+                    ])
+        , test "provides access to the position" <|
+            expectToParseNested
+                "foo"
+                [ "", "foo" ]
+                (BasicParser.start <| seqnc
+                    [ xpre (\ctx -> ctx.position /= 0)
+                    , (match "foo")
+                    ])
         ]
 
 -- TODO: Test position advances properly for all operators
