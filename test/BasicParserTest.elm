@@ -42,16 +42,32 @@ testDefiningRules : Test
 testDefiningRules =
     describe "defining rules"
         [ test "user should be able to add custom rules" <|
-            (\() ->
-                let
-                    ruleSpec = match "foo"
-                    parser = BasicParser.withRules
-                        (Dict.fromList
-                            [ ( "test", ruleSpec ) ])
-                in
+            let
+                ruleSpec = match "foo"
+                parser = BasicParser.withListedRules
+                    [ ( "test", ruleSpec )
+                    ]
+            in
+                (\() ->
                     Expect.equal
                         (Just ruleSpec)
                         (parser |> getRule "test"))
+        , test "user should be able to call rules by name" <|
+            let
+                parser = BasicParser.withListedRules
+                    [ ( "test", match "foo" )
+                    , ( "start", call "test" )
+                    ]
+            in
+                expectToParse "foo" "foo" parser
+        , test "user should be able to call rules by name, v.2" <|
+            let
+                parser = BasicParser.withListedRules
+                    [ ( "test", match "foo" )
+                    ]
+            in
+                expectToParse "foo" "foo"
+                    (parser |> BasicParser.startWith (call "test"))
         ]
 
 testBasicMatching : Test
@@ -393,7 +409,7 @@ expectToParse input output parser =
     \() ->
         Expect.equal
             (Matched (BasicParser.RString output))
-            (parse parser input)
+            (BasicParser.parse parser input)
 
 expectToParseNested : String -> List String -> BasicParser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
@@ -401,13 +417,13 @@ expectToParseNested input chunks parser =
         Expect.equal
             (Matched (BasicParser.RList
                 (chunks |> List.map (\chunk -> RString chunk))))
-            (parse parser input)
+            (BasicParser.parse parser input)
 
 expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)
 expectToFailToParse input parser =
     \() ->
         let
-            result = (parse parser input)
+            result = (BasicParser.parse parser input)
         in
             Expect.true
                 ("Expected to fail to parse \"" ++ input ++ "\".")
@@ -417,7 +433,7 @@ expectToFailToParseWith : String -> BasicParser.ParseResult -> BasicParser -> ((
 expectToFailToParseWith input output parser =
     \() ->
         let
-            result = (parse parser input)
+            result = (BasicParser.parse parser input)
         in
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")

@@ -46,6 +46,7 @@ type Expectation =
     -- | ExpectedList (List String)
     | ExpectedAnything
     -- | ExpectedRule RuleName
+    | ExpectedRuleDefinition RuleName
     -- | ExpectedStartRule
     -- | ExpectedOperator Operator
     | ExpectedEndOfInput
@@ -66,7 +67,7 @@ type ParseResult o =
       Matched o
     | Failed (FailureReason o)
 
--- FIXME: ParseResult should be Mathed | Failed pair, like Maybe or Result
+-- FIXME: Merge Parser and Context in a Parser record ??
 
 -- type alias Context a = Dict String a
 type alias Context o =
@@ -82,6 +83,7 @@ type alias Context o =
 type alias OperatorResult o = (ParseResult o, Context o)
 
 type alias Rules o = Dict String (Operator o)
+type alias RulesList o = List ( String, Operator o )
 type alias Values o = Dict String o
 
 parse : Parser o -> String -> ParseResult o
@@ -105,20 +107,41 @@ withRules rules adapter =
     , rules = rules
     }
 
-addRule : RuleName -> Operator o -> Rules o -> Rules o
-addRule name op rules =
+-- TODO: withRules should accept RulesList instead
+
+withListedRules : RulesList o -> Adapter o -> Parser o
+withListedRules rulesList adapter =
+    withRules (Dict.fromList rulesList) adapter
+
+addRule : RuleName -> Operator o -> Parser o -> Parser o
+addRule name op parser =
+    { parser | rules = parser.rules |> addRule_ name op }
+
+addRule_ : RuleName -> Operator o -> Rules o -> Rules o
+addRule_ name op rules =
     rules |> Dict.insert name op
 
 getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
     Dict.get name parser.rules
 
+getRule_ : RuleName -> Context o -> Maybe (Operator o)
+getRule_ name ctx =
+    Dict.get name ctx.rules
+
 start : Operator o -> Adapter o -> Parser o
 start op adapter =
     let
-        justStartRule = (noRules |> addRule "start" op)
+        justStartRule = (noRules |> addRule_ "start" op)
     in
         withRules justStartRule adapter
+
+startWith : Operator o -> Parser o -> Parser o
+startWith op parser =
+    parser |> addRule "start" op
+
+addStartRule : Operator o -> Parser o -> Parser o
+addStartRule = startWith
 
 -- OPERATORS
 
@@ -201,6 +224,7 @@ execute op ctx =
         PreExec uc -> execPre uc -- `pre`
         NegPreExec uc -> execNegPre uc -- `xpre`
         Label n op -> execLabel n op -- `label`
+        Call n -> execCall n -- `call` a.k.a. `ref`
         _ -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
@@ -395,6 +419,13 @@ execLabel name op ctx =
                 _ -> newCtx
     in
         ( result, updatedCtx )
+
+execCall : RuleName -> Context o -> OperatorResult o
+execCall ruleName ctx =
+    case (getRule_ ruleName ctx) of
+        Just op -> (execute op ctx)
+        -- TODO: add Rule name to the Match and Failure information
+        Nothing -> ctx |> failedBy (ExpectedRuleDefinition ruleName) (gotChar ctx)
 
 -- UTILS
 
