@@ -12,6 +12,7 @@ suite : Test
 suite =
     describe "basic friendly parser"
         [ testStartRule
+        , testDefiningRules
         , testBasicMatching
         , testChoiceMatching
         , testSequenceMatching
@@ -35,6 +36,22 @@ testStartRule =
                 "foo"
                 (Failed NoStartRule)
                 (BasicParser.withRules Parser.noRules)
+        ]
+
+testDefiningRules : Test
+testDefiningRules =
+    describe "defining rules"
+        [ test "user should be able to add custom rules" <|
+            (\() ->
+                let
+                    ruleSpec = match "foo"
+                    parser = BasicParser.withRules
+                        (Dict.fromList
+                            [ ( "test", ruleSpec ) ])
+                in
+                    Expect.equal
+                        (Just ruleSpec)
+                        (parser |> getRule "test"))
         ]
 
 testBasicMatching : Test

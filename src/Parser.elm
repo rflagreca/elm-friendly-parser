@@ -22,8 +22,8 @@ type OperatorType o =
     | PreExec (UserPrefixCode o) -- 13. `pre` -- DONE
     | NegPreExec (UserPrefixCode o) -- 14. `xpre` -- DONE
     | Label String (Operator o) -- 15. `label` -- DONE
-    | Rule RuleName (Operator o) -- 16. `rule`
-    | RuleReference RuleName -- 17. `ref`
+    -- | Rule RuleName (Operator o) -- 16. `rule`
+    | Call RuleName -- 17. `call` a.k.a `ref`
     | Alias String (Operator o) -- 18. `as`
 
 type alias Operator o = OperatorType o
@@ -105,9 +105,13 @@ withRules rules adapter =
     , rules = rules
     }
 
-addRule : String -> Operator o -> Rules o -> Rules o
+addRule : RuleName -> Operator o -> Rules o -> Rules o
 addRule name op rules =
     rules |> Dict.insert name op
+
+getRule : RuleName -> Parser o -> Maybe (Operator o)
+getRule name parser =
+    Dict.get name parser.rules
 
 start : Operator o -> Adapter o -> Parser o
 start op adapter =
@@ -173,6 +177,10 @@ xpre userCode =
 label : String -> Operator o -> Operator o
 label name operator =
     Label name operator
+
+call : RuleName -> Operator o
+call ruleName =
+    Call ruleName
 
 -- OPERATORS EXECUTION
 
