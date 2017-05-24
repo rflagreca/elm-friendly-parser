@@ -60,8 +60,8 @@ type Sample =
 
 type FailureReason o =
       ByExpectation ( Expectation, Sample )
-    -- | FromRule RuleName (FailureReason o)
-    | FollowingNestedRule ( List (ParseResult o), Sample )
+    | FollowingRule RuleName (FailureReason o)
+    | FollowingNestedOperator ( List (ParseResult o), Sample )
     | NoStartRule
     | SomethingWasNotImplemented
 
@@ -429,14 +429,13 @@ execLabel name op ctx =
 
 execCall : RuleName -> Context o -> OperatorResult o
 execCall ruleName ctx =
-    case (getRule_ ruleName ctx) of
-        Just op -> (execute op ctx)
-        -- TODO: add Rule name to the Match and Failure information
-        Nothing -> ctx |> failedBy (ExpectedRuleDefinition ruleName) (gotChar ctx)
+    execCallAs ruleName ruleName ctx
 
 execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
-execCallAs alias_ realName ctx =
-    execCall realName ctx -- FIXME: implement
+execCallAs ruleAlias realRuleName ctx =
+    case (getRule_ realRuleName ctx) of
+        Just op -> (execute op ctx) |> addRuleName ruleAlias
+        Nothing -> ctx |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar ctx)
 
 -- execDefineRule : RuleName -> Operator o -> Context o -> OperatorResult o
 -- execDefineRule ruleName op ctx =
@@ -528,7 +527,7 @@ failedCC expectation ctx =
 
 failedNested : List (ParseResult o) -> Sample -> Context o -> OperatorResult o
 failedNested failures sample ctx =
-    ctx |> failed (FollowingNestedRule ( failures, sample ))
+    ctx |> failed (FollowingNestedOperator ( failures, sample ))
 
 failedNestedCC : List (ParseResult o) -> Context o -> OperatorResult o
 failedNestedCC failures ctx =
@@ -541,6 +540,12 @@ notImplemented ctx =
 -- failWith : Expectation -> Sample -> ParseResult
 -- failWith expectation sample =
 --     ExpectationFailure ( expectation, sample )
+
+addRuleName : RuleName -> OperatorResult o -> OperatorResult o
+addRuleName name ( result, ctx ) =
+    case result of
+        Matched _ -> ( result, ctx ) -- Shouldn't match also include ruleName ?
+        Failed failure -> ( Failed (FollowingRule name failure), ctx )
 
 opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
 opResultToMaybe ( parseResult, ctx ) =

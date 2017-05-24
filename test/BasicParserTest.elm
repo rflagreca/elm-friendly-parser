@@ -12,7 +12,7 @@ suite : Test
 suite =
     describe "basic friendly parser"
         [ testStartRule
-        , testDefiningRules
+        , testDefiningAndCallingRules
         , testBasicMatching
         , testChoiceMatching
         , testSequenceMatching
@@ -38,9 +38,9 @@ testStartRule =
                 (BasicParser.withRules Parser.noRules)
         ]
 
-testDefiningRules : Test
-testDefiningRules =
-    describe "defining rules"
+testDefiningAndCallingRules : Test
+testDefiningAndCallingRules =
+    describe "defining and calling rules"
         [ test "user should be able to add custom rules" <|
             let
                 ruleSpec = match "foo"
@@ -67,6 +67,17 @@ testDefiningRules =
                     ]
             in
                 expectToParse "foo" "foo"
+                    (parser |> BasicParser.startWith (call "test"))
+        , test "failure contains failed rule information" <|
+            let
+                parser = BasicParser.withListedRules
+                    [ ( "test", match "foo" )
+                    ]
+            in
+                expectToFailToParseWith
+                    "bar"
+                    (Failed (FollowingRule "test"
+                        (ByExpectation (ExpectedValue "foo", GotValue "bar"))))
                     (parser |> BasicParser.startWith (call "test"))
         ]
 
@@ -396,7 +407,7 @@ testLabelMatching =
 
 nestedFailureOf : List (String, Sample) -> Sample -> BasicParser.ParseResult
 nestedFailureOf strings sample =
-    Failed (FollowingNestedRule
+    Failed (FollowingNestedOperator
         (List.foldl
             (\(str, sample) failures ->
                 failures ++ [ Failed (ByExpectation (ExpectedValue str, sample)) ])
