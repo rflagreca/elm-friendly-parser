@@ -67,9 +67,8 @@ type ParseResult o =
       Matched o
     | Failed (FailureReason o)
 
--- FIXME: Merge Parser and Context in a Parser record ??
+-- FIXME: Merge Parser and Context in a Parser or Context record ??
 
--- type alias Context a = Dict String a
 type alias Context o =
     { input: String
     , inputLength: Int
@@ -89,7 +88,7 @@ type alias Values o = Dict String o
 parse : Parser o -> String -> ParseResult o
 parse parser input =
     let
-        ctx = (initContext parser.adapt input)
+        ctx = (initContext parser input)
     in
         case getStartRule parser of
             Just startOperator ->
@@ -432,14 +431,14 @@ execCall ruleName ctx =
 noValues : Values v
 noValues = Dict.empty
 
-initContext : Adapter o -> String -> Context o
-initContext adapter input =
+initContext : Parser o -> String -> Context o
+initContext parser input =
     { input = input
     , inputLength = String.length input
     , position = 0
-    , rules = noRules
+    , rules = parser.rules
     , values = noValues
-    , adapt = adapter
+    , adapt = parser.adapt
     }
 
 getStartRule : Parser o -> Maybe (Operator o)
