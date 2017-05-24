@@ -22,9 +22,10 @@ type OperatorType o =
     | PreExec (UserPrefixCode o) -- 13. `pre` -- DONE
     | NegPreExec (UserPrefixCode o) -- 14. `xpre` -- DONE
     | Label String (Operator o) -- 15. `label` -- DONE
-    -- | Rule RuleName (Operator o) -- 16. `rule`
-    | Call RuleName -- 17. `call` a.k.a `ref`
-    | Alias String (Operator o) -- 18. `as`
+    -- | Rule RuleName (Operator o) -- 16. `rule` -- has no real need, done in comments
+    | Call RuleName -- 17. `call` a.k.a `ref` -- DONE
+    -- | Alias String (Operator o) -- 18. `as`
+    | CallAs RuleName RuleName
 
 type alias Operator o = OperatorType o
 
@@ -59,6 +60,7 @@ type Sample =
 
 type FailureReason o =
       ByExpectation ( Expectation, Sample )
+    -- | FromRule RuleName (FailureReason o)
     | FollowingNestedRule ( List (ParseResult o), Sample )
     | NoStartRule
     | SomethingWasNotImplemented
@@ -204,6 +206,10 @@ call : RuleName -> Operator o
 call ruleName =
     Call ruleName
 
+-- rule : RuleName -> Operator o -> Operator o
+-- rule ruleName op =
+--     Rule ruleName op
+
 -- OPERATORS EXECUTION
 
 execute : Operator o -> Context o -> OperatorResult o
@@ -224,7 +230,9 @@ execute op ctx =
         NegPreExec uc -> execNegPre uc -- `xpre`
         Label n op -> execLabel n op -- `label`
         Call n -> execCall n -- `call` a.k.a. `ref`
-        _ -> notImplemented
+        CallAs n1 n2 -> execCallAs n1 n2
+        -- Rule n op -> execDefineRule n op -- `rule`
+        Regex s1 s2 -> notImplemented
 
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
@@ -425,6 +433,14 @@ execCall ruleName ctx =
         Just op -> (execute op ctx)
         -- TODO: add Rule name to the Match and Failure information
         Nothing -> ctx |> failedBy (ExpectedRuleDefinition ruleName) (gotChar ctx)
+
+execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
+execCallAs alias_ realName ctx =
+    execCall realName ctx -- FIXME: implement
+
+-- execDefineRule : RuleName -> Operator o -> Context o -> OperatorResult o
+-- execDefineRule ruleName op ctx =
+--     matched "" { ctx | rules = ctx.rules |> addRule_ ruleName op }
 
 -- UTILS
 
