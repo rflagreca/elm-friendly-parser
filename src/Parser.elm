@@ -31,9 +31,10 @@ type alias Operator o = OperatorType o
 
 type alias RuleName = String
 
-type InputType o = AValue String | AList (List o)
-
--- type alias Chunk = ( Int, String )
+type InputType o =
+      AValue String
+    | AList (List o)
+    | ARule RuleName o
 
 type alias Adapter o = (InputType o -> o)
 
@@ -44,15 +45,10 @@ type alias Parser o = {
 
 type Expectation =
       ExpectedValue String -- FIXME: InputType?
-    -- | ExpectedList (List String)
     | ExpectedAnything
-    -- | ExpectedRule RuleName
     | ExpectedRuleDefinition RuleName
     -- | ExpectedStartRule
-    -- | ExpectedOperator Operator
     | ExpectedEndOfInput
-    -- | ExpectedChunk Chunk
-    -- | ExpectedChunks (List Chunk)
 
 type Sample =
       GotValue String
@@ -434,7 +430,7 @@ execCall ruleName ctx =
 execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
 execCallAs ruleAlias realRuleName ctx =
     case (getRule_ realRuleName ctx) of
-        Just op -> (execute op ctx) |> addRuleName ruleAlias
+        Just op -> (execute op ctx) |> addRuleToResult ruleAlias
         Nothing -> ctx |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar ctx)
 
 -- execDefineRule : RuleName -> Operator o -> Context o -> OperatorResult o
@@ -508,6 +504,10 @@ matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
     matchedWith (ctx.adapt (AList val)) ctx
 
+matchedRule : RuleName -> o -> Context o -> OperatorResult o
+matchedRule ruleName value ctx =
+    matchedWith (ctx.adapt (ARule ruleName value)) ctx
+
 -- matchedFlatList : List o -> Context o -> OperatorResult o
 -- matchedFlatList val ctx =
 --     matchedWith (ctx.flatten (AList val)) ctx
@@ -541,11 +541,11 @@ notImplemented ctx =
 -- failWith expectation sample =
 --     ExpectationFailure ( expectation, sample )
 
-addRuleName : RuleName -> OperatorResult o -> OperatorResult o
-addRuleName name ( result, ctx ) =
+addRuleToResult : RuleName -> OperatorResult o -> OperatorResult o
+addRuleToResult ruleName ( result, ctx ) =
     case result of
-        Matched _ -> ( result, ctx ) -- Shouldn't match also include ruleName ?
-        Failed failure -> ( Failed (FollowingRule name failure), ctx )
+        Matched v -> ctx |> matchedRule ruleName v
+        Failed failure -> ( Failed (FollowingRule ruleName failure), ctx )
 
 opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
 opResultToMaybe ( parseResult, ctx ) =
@@ -557,6 +557,8 @@ parseResultToMaybe result =
         Matched v -> Just v
         _ -> Nothing
 
+-- parseResultToMaybeInv : ParseResult o -> Maybe o
+
 combine : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
 combine resultOne resultTwo inContext =
     case ( resultOne, resultTwo ) of
@@ -564,4 +566,6 @@ combine resultOne resultTwo inContext =
             matchedList [ vOne, vTwo ] inContext
         _ -> ( resultTwo, inContext )
 
--- parseResultToMaybeInv : ParseResult o -> Maybe o
+resultToString : ParseResult o -> String
+resultToString result =
+    "TODO"

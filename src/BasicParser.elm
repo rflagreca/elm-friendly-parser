@@ -5,7 +5,7 @@ import Parser exposing (..)
 import List exposing (..)
 import String exposing (..)
 
-type ReturnType = RString String | RList (List ReturnType)
+type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
 
 type alias BasicParser = Parser.Parser ReturnType
 
@@ -41,9 +41,11 @@ adapter input =
     case input of
         Parser.AValue str -> RString str
         Parser.AList list -> RList list
+        Parser.ARule name value -> RRule name value
 
 toString : ReturnType -> String
 toString value =
     case value of
         RString str -> str
         RList list -> String.join "," (List.map toString list)
+        RRule name value -> name ++ ": " ++ (toString value)

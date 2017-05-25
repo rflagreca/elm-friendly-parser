@@ -59,14 +59,24 @@ testDefiningAndCallingRules =
                     , ( "start", call "test" )
                     ]
             in
-                expectToParse "foo" "foo" parser
+                expectToParseAsRule "foo" "foo"  "test" parser
         , test "user should be able to call rules by name, v.2" <|
             let
                 parser = BasicParser.withListedRules
                     [ ( "test", match "foo" )
                     ]
             in
-                expectToParse "foo" "foo"
+                expectToParseAsRule "foo" "foo" "test"
+                    (parser |> BasicParser.startWith (call "test"))
+        , test "match should contain a rule name" <|
+            let
+                parser = BasicParser.withListedRules
+                    [ ( "test", match "foo" )
+                    ]
+            in
+                expectToMatchWith
+                    "foo"
+                    (RRule "test" (RString "foo"))
                     (parser |> BasicParser.startWith (call "test"))
         , test "failure contains failed rule information" <|
             let
@@ -282,7 +292,7 @@ testActionMatching =
                         case match of
                             BasicParser.RString str ->
                                 Just (BasicParser.RString (str ++ "magic"))
-                            BasicParser.RList list -> Just (BasicParser.RList list)))
+                            _ -> Just match))
         , test "provides access to the position" <|
             expectToParse
                 "foo"
@@ -292,7 +302,7 @@ testActionMatching =
                         case match of
                             BasicParser.RString str ->
                                 Just (BasicParser.RString (Basics.toString (ctx.position)))
-                            BasicParser.RList list -> Just (BasicParser.RList list)))
+                            _ -> Just match))
         , test "fails when user-code returned failure even if match is successful by itself" <|
             expectToFailToParseWith
                 "foo"
@@ -420,6 +430,20 @@ expectToParse input output parser =
     \() ->
         Expect.equal
             (Matched (BasicParser.RString output))
+            (BasicParser.parse parser input)
+
+expectToParseAsRule : String -> String -> String -> BasicParser -> (() -> Expect.Expectation)
+expectToParseAsRule input output ruleName parser =
+    \() ->
+        Expect.equal
+            (Matched (BasicParser.RRule ruleName (BasicParser.RString output)))
+            (BasicParser.parse parser input)
+
+expectToMatchWith : String -> BasicParser.ReturnType -> BasicParser -> (() -> Expect.Expectation)
+expectToMatchWith input value parser =
+    \() ->
+        Expect.equal
+            (Matched value)
             (BasicParser.parse parser input)
 
 expectToParseNested : String -> List String -> BasicParser -> (() -> Expect.Expectation)
