@@ -3,6 +3,8 @@ module ParserTest exposing (suite)
 import Test exposing (..)
 import Expect
 
+import User exposing (..)
+import Operator exposing (..)
 import Parser exposing (..)
 
 suite : Test
@@ -42,7 +44,7 @@ testAdapters =
                 (Parser.start
                     (match "abc")
                     (\v -> case v of
-                        Parser.AValue s -> (s ++ "d")
+                        User.AValue s -> (s ++ "d")
                         _ -> "failed"))
         ]
 

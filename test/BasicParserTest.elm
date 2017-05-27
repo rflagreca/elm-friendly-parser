@@ -1,9 +1,3 @@
-
-
-
-
-
-
 module BasicParserTest exposing (suite)
 
 import Dict
@@ -12,6 +6,7 @@ import Regex
 import Test exposing (..)
 import Expect
 
+import Operator exposing (..)
 import Parser exposing (..)
 import BasicParser exposing (..)
 
@@ -59,7 +54,7 @@ testDefiningAndCallingRules =
                 (\() ->
                     Expect.equal
                         (Just ruleSpec)
-                        (parser |> getRule "test"))
+                        (parser |> Parser.getRule "test"))
         , test "user should be able to call rules by name" <|
             let
                 parser = BasicParser.withListedRules
@@ -274,12 +269,12 @@ testNotMatching =
             expectToFailToParseWith
                 "foo"
                 ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "" ) ) )
-                (BasicParser.start <| Parser.not (match "foo"))
+                (BasicParser.start <| Operator.not (match "foo"))
         , test "matches when sample not exists" <|
             expectToParse
                 "bar"
                 ""
-                (BasicParser.start <| Parser.not (match "foo"))
+                (BasicParser.start <| Operator.not (match "foo"))
         ]
 
 testActionMatching : Test

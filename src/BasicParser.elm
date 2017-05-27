@@ -1,5 +1,7 @@
 module BasicParser exposing (..)
 
+import User exposing (..)
+import Operator exposing (..)
 import Parser exposing (..)
 
 import List exposing (..)
@@ -9,11 +11,11 @@ type ReturnType = RString String | RList (List ReturnType) | RRule RuleName Retu
 
 type alias BasicParser = Parser.Parser ReturnType
 
-type alias Operator = Parser.Operator ReturnType
-type alias ParseResult = Parser.ParseResult ReturnType
-type alias Rules = Parser.Rules ReturnType
-type alias RulesList = Parser.RulesList ReturnType
-type alias InputType = Parser.InputType ReturnType
+type alias Operator = Operator.Operator ReturnType
+type alias ParseResult = Operator.ParseResult ReturnType
+type alias Rules = Operator.Rules ReturnType
+type alias RulesList = Operator.RulesList ReturnType
+type alias InputType = User.InputType ReturnType
 
 start : Operator -> BasicParser
 start op =
@@ -39,9 +41,9 @@ withListedRules rulesList =
 adapter : InputType -> ReturnType
 adapter input =
     case input of
-        Parser.AValue str -> RString str
-        Parser.AList list -> RList list
-        Parser.ARule name value -> RRule name value
+        User.AValue str -> RString str
+        User.AList list -> RList list
+        User.ARule name value -> RRule name value
 
 toString : ReturnType -> String
 toString value =
