@@ -8,7 +8,7 @@ import Expect
 
 import Operator exposing (..)
 import Parser exposing (..)
-import BasicParser exposing (..)
+import BasicParser.Parser as BasicParser exposing (..)
 
 suite : Test
 suite =

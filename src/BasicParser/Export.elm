@@ -1,4 +1,6 @@
-import BasicParser exposing (..)
+module BasicParser.Export exposing (..)
+
+import BasicParser.Parser as BasicParser exposing (..)
 import Operator exposing (ParseResult)
 
 returnType : ReturnType -> String

@@ -1,11 +1,8 @@
-module BasicParser exposing (..)
+module BasicParser.Parser exposing (..)
 
 import User exposing (..)
 import Operator exposing (..)
 import Parser exposing (..)
-
-import List exposing (..)
-import String exposing (..)
 
 type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
 
