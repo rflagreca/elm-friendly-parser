@@ -44,10 +44,3 @@ adapter input =
         User.AValue str -> RString str
         User.AList list -> RList list
         User.ARule name value -> RRule name value
-
-toString : ReturnType -> String
-toString value =
-    case value of
-        RString str -> str
-        RList list -> String.join "," (List.map toString list)
-        RRule name value -> name ++ ": " ++ (toString value)
