@@ -3,13 +3,15 @@ module Parser exposing (..)
 import Dict exposing (..)
 import Utils exposing (..)
 
+import Regex
+
 type alias UserCode o = (o -> Context o -> (Maybe o))
 type alias UserPrefixCode o = (Context o -> Bool)
 
 type OperatorType o =
       NextChar -- 1. `ch` -- DONE
     | Match String -- 2. `match` -- DONE
-    | Regex String String -- 3. `re`
+    | Regex Regex.Regex String -- 3. `re`
     | TextOf (Operator o) -- 4. `text` -- DONE
     | Maybe_ (Operator o) -- 5. `maybe` -- DONE
     | Some (Operator o) -- 6. `some` -- 1/2 DONE
@@ -47,7 +49,8 @@ type Expectation =
       ExpectedValue String -- FIXME: InputType?
     | ExpectedAnything
     | ExpectedRuleDefinition RuleName
-    -- | ExpectedStartRule
+    | ExpectedRegexMatch String
+    --| ExpectedStartRule
     | ExpectedEndOfInput
 
 type Sample =
@@ -202,6 +205,10 @@ call : RuleName -> Operator o
 call ruleName =
     Call ruleName
 
+re : Regex.Regex -> String -> Operator o
+re regex description =
+    Regex regex description
+
 -- rule : RuleName -> Operator o -> Operator o
 -- rule ruleName op =
 --     Rule ruleName op
@@ -227,8 +234,7 @@ execute op ctx =
         Label n op -> execLabel n op -- `label`
         Call n -> execCall n -- `call` a.k.a. `ref`
         CallAs n1 n2 -> execCallAs n1 n2
-        -- Rule n op -> execDefineRule n op -- `rule`
-        Regex s1 s2 -> notImplemented
+        Regex re desc -> execRegex re desc
 
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
@@ -437,6 +443,23 @@ execCallAs ruleAlias realRuleName ctx =
 -- execDefineRule ruleName op ctx =
 --     matched "" { ctx | rules = ctx.rules |> addRule_ ruleName op }
 
+execRegex : Regex.Regex -> String -> Context o -> OperatorResult o
+execRegex regex desc ctx =
+    let
+        matches = Regex.find (Regex.AtMost 1) regex
+                    (String.slice ctx.position ctx.inputLength ctx.input)
+        -- FIXME: add `^` to the start, so Regex with try matching from the start,
+        --        which should be faster
+        firstMatch = List.head matches
+    in
+        case firstMatch of
+            Just match ->
+                if match.index == 0 then
+                    ctx |> matched match.match
+                else
+                    ctx |> failedRE desc
+            Nothing -> ctx |> failedRE desc
+
 -- UTILS
 
 noValues : Values v
@@ -533,6 +556,10 @@ failedNestedCC : List (ParseResult o) -> Context o -> OperatorResult o
 failedNestedCC failures ctx =
     ctx |> failedNested failures (gotChar ctx)
 
+failedRE : String -> Context o -> OperatorResult o
+failedRE desc ctx =
+    ctx |> failedCC (ExpectedRegexMatch desc)
+
 notImplemented : Context o -> OperatorResult o
 notImplemented ctx =
     ctx |> failed SomethingWasNotImplemented
@@ -566,6 +593,22 @@ combine resultOne resultTwo inContext =
             matchedList [ vOne, vTwo ] inContext
         _ -> ( resultTwo, inContext )
 
-resultToString : ParseResult o -> String
-resultToString result =
-    "TODO"
+-- resultToString : ParseResult o -> String
+-- resultToString result =
+--     "TODO"
+
+-- toString : Parser o -> String
+-- toString parser =
+--     "TODO"
+
+-- fromString : String -> Parser o
+-- fromString src =
+--     "TODO"
+
+-- encode : Parser o -> Json
+-- encode parser =
+--     "TODO"
+
+-- decode : Json -> Parser o
+-- decode json =
+--     "TODO"

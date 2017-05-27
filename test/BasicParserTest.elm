@@ -1,6 +1,13 @@
+
+
+
+
+
+
 module BasicParserTest exposing (suite)
 
 import Dict
+import Regex
 
 import Test exposing (..)
 import Expect
@@ -26,6 +33,7 @@ suite =
         , testPreMatching
         , testNegPreMatching
         , testLabelMatching
+        , testREMatching
         ]
 
 testStartRule : Test
@@ -411,7 +419,23 @@ testLabelMatching =
                         ])
         ]
 
+testREMatching : Test
+testREMatching =
+    describe "`re` matching"
+        [ test "properly uses regular expressions to parse text" <|
+            expectToParse
+                "foo"
+                "foo"
+                (BasicParser.start <| re (Regex.regex "f?oo") "foo regex")
+        , test "fails when regular expression is not matching" <|
+            expectToFailToParseWith
+                "boo"
+                (Failed (ByExpectation (ExpectedRegexMatch "foo regex", GotValue "b")))
+                (BasicParser.start <| re (Regex.regex "f?oo") "foo regex")
+        ]
+
 -- TODO: Test position advances properly for all operators
+-- TODO: Failures should contain either index in the input or (better!) both line/column positions
 
 -- UTILS
 
