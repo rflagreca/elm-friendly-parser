@@ -206,7 +206,7 @@ execChoice ops ctx =
                                 in
                                     case parseResult of
                                         Matched _ -> ( Just parseResult, prevFailures, newCtx )
-                                        _ -> ( Nothing, prevFailures ++ [ parseResult ], newCtx )
+                                        Failed _ -> ( Nothing, prevFailures ++ [ parseResult ], newCtx )
                 )
                 ( Nothing, [], ctx )
                 ops
@@ -227,14 +227,14 @@ execSequence ops ctx =
                     in
                         case maybeFailedBefore of
                             Just _ -> prevStep
-                            _ ->
+                            Nothing ->
                                 let
                                     execResult = (execute op prevCtx)
                                     ( parseResult, newCtx ) = execResult
                                 in
                                     case parseResult of
                                         Matched v -> ( Nothing, prevMatches ++ [ v ], newCtx )
-                                        _ -> ( Just parseResult, prevMatches, newCtx )
+                                        Failed _ -> ( Just parseResult, prevMatches, newCtx )
                 )
                 ( Nothing, [], ctx )
                 ops
@@ -251,7 +251,7 @@ execMaybe op ctx =
     in
         case result of
             ( Matched s, newCtx ) -> matchedWith s newCtx
-            _ -> matched "" ctx
+            ( Failed _, _ ) -> matched "" ctx
 
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
@@ -275,7 +275,7 @@ execAny op ctx =
             in
                 case mayBeMatched of
                     Matched v -> [ ( v, nextCtx ) ] ++ (unfold op nextCtx)
-                    _ -> []
+                    Failed _ -> []
             )
         result = unfold op ctx
     in
@@ -294,7 +294,7 @@ execSome op ctx =
                 let
                     ( anyResult, lastCtx ) = (execAny op nextCtx)
                 in
-                    combine onceResult anyResult lastCtx
+                    concat onceResult anyResult lastCtx
             failure -> ( failure, ctx )
 
 execAnd : Operator o -> Context o -> OperatorResult o
@@ -325,7 +325,7 @@ execAction op userCode ctx =
                 case (userCode v newCtx) of
                     Just userV -> ( Matched userV, newCtx )
                     Nothing -> newCtx |> failedCC ExpectedAnything
-            _ -> ( result, newCtx )
+            Failed _ -> ( result, newCtx )
 
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
@@ -353,7 +353,7 @@ execLabel name op ctx =
             case result of
                 Matched v ->
                     { newCtx | values = newCtx.values |> Dict.insert name v }
-                _ -> newCtx
+                Failed _ -> newCtx
     in
         ( result, updatedCtx )
 
@@ -390,17 +390,55 @@ execRegex regex desc ctx =
 
 -- UTILS
 
+-- chain :
+--        Operator o
+--     -> v
+--     -> (ParseResult o -> Context o -> v -> Maybe (Operator o, Context o, v))
+--     -> Context o
+--     -> OperatorResult o
+-- -- fn: (\prevResult prevContext prevCollected -> Maybe (nextOp, nextCtx, collectedVal))
+-- chain initialOp initialVal fn initialCtx =
+--     List.foldl
+--         (\)
+
+
+--     let
+--         reducedReport =
+--             List.foldl
+--                 (\op prevStep ->
+--                     let
+--                         ( maybeSucceededBefore, prevFailures, prevCtx ) = prevStep
+--                     in
+--                         case maybeSucceededBefore of
+--                             Just _ -> prevStep
+--                             Nothing ->
+--                                 let
+--                                     execResult = (execute op prevCtx)
+--                                     ( parseResult, newCtx ) = execResult
+--                                 in
+--                                     case parseResult of
+--                                         Matched _ -> ( Just parseResult, prevFailures, newCtx )
+--                                         Failed _ -> ( Nothing, prevFailures ++ [ parseResult ], newCtx )
+--                 )
+--                 ( Nothing, [], ctx )
+--                 ops
+--         ( maybeChoiceSucceeded, failures, lastCtx ) = reducedReport
+--     in
+--         case maybeChoiceSucceeded of
+--             Just (Matched success) -> ( Matched success, lastCtx )
+--             _ -> ctx |> failedNestedCC failures
+
 isNotParsed : ParseResult o -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
-        _ -> True
+        Failed _ -> True
 
 isParsedAs : String -> ParseResult o -> Bool
 isParsedAs subject result =
     case result of
         Matched s -> (toString s == subject)
-        _ -> False
+        Failed _-> False
 
 advanceBy : Int -> Context o -> Context o
 advanceBy cnt ctx =
@@ -493,10 +531,16 @@ parseResultToMaybe : ParseResult o -> Maybe o
 parseResultToMaybe result =
     case result of
         Matched v -> Just v
-        _ -> Nothing
+        Failed _ -> Nothing
 
-combine : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
-combine resultOne resultTwo inContext =
+parseResultToResult : ParseResult o -> Result (FailureReason o) o
+parseResultToResult result =
+    case result of
+        Matched v -> Ok v
+        Failed f -> Err f
+
+concat : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
+concat resultOne resultTwo inContext =
     case ( resultOne, resultTwo ) of
         ( Matched vOne, Matched vTwo ) ->
             matchedList [ vOne, vTwo ] inContext

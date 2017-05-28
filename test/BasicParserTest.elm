@@ -397,21 +397,6 @@ testLabelMatching =
                 "foo"
                 (BasicParser.start <|
                     label "xyz" (match "for"))
-        , test "not stores the value when match failed" <|
-            expectToParseNested
-                "forbarx"
-                [ "", "for", "bar", "OK" ]
-                (BasicParser.start <|
-                    seqnc
-                        [ label "xyz" (maybe (match "foo"))
-                        , match "for"
-                        , match "bar"
-                        , action (match "x")
-                                 (\val ctx ->
-                                    case (Dict.get "xyz" ctx.values) of
-                                        Just val -> Just (RString "!OK")
-                                        Nothing -> Just (RString "OK"))
-                        ])
         ]
 
 testREMatching : Test
