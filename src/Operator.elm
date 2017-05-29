@@ -186,35 +186,28 @@ execMatch expectation ctx =
             else
                 ctx |> failedCC (ExpectedValue expectation)
 
--- FIXME: http://folkertdev.nl/blog/loops-to-folds/
-
 execChoice : List (Operator o) -> Context o -> OperatorResult o
 execChoice ops ctx =
-    let
-        reducedReport =
-            List.foldl
-                (\op prevStep ->
-                    let
-                        ( maybeSucceededBefore, prevFailures, prevCtx ) = prevStep
-                    in
-                        case maybeSucceededBefore of
-                            Just _ -> prevStep
-                            Nothing ->
-                                let
-                                    execResult = (execute op prevCtx)
-                                    ( parseResult, newCtx ) = execResult
-                                in
-                                    case parseResult of
-                                        Matched _ -> ( Just parseResult, prevFailures, newCtx )
-                                        Failed _ -> ( Nothing, prevFailures ++ [ parseResult ], newCtx )
-                )
-                ( Nothing, [], ctx )
-                ops
-        ( maybeChoiceSucceeded, failures, lastCtx ) = reducedReport
-    in
-        case maybeChoiceSucceeded of
-            Just (Matched success) -> ( Matched success, lastCtx )
-            _ -> ctx |> failedNestedCC failures
+    case ops of
+        [] -> ctx |> failedBy ExpectedAnything GotEndOfInput
+        (firstOp::restOps) ->
+            let
+                applied = chain
+                    (\prevResult lastCtx reducedVal ->
+                        case reducedVal of
+                            ( [], _, _ ) -> Stop
+                            ( nextOp::restOps, maybeMatched, failures ) ->
+                                case prevResult of
+                                    Matched v ->
+                                        StopWith ( [], Just (v, lastCtx), failures )
+                                    Failed failure ->
+                                        Next ( nextOp, ( restOps, Nothing, failures ++ [ prevResult ] ) )
+                    )
+                    firstOp ( restOps, Nothing, [] ) ctx
+            in
+                case applied of
+                    ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matchedWith success
+                    ( _, Nothing, failures ) -> ctx |> failedNestedCC failures
 
 execSequence : List (Operator o) -> Context o -> OperatorResult o
 execSequence ops ctx =
@@ -268,21 +261,20 @@ execTextOf op ctx =
 execAny : Operator o -> Context o -> OperatorResult o
 execAny op ctx =
     let
-        prevPos = ctx.position
-        unfold = (\op ctx ->
-            let
-                ( mayBeMatched, nextCtx ) = ( execute op ctx )
-            in
-                case mayBeMatched of
-                    Matched v -> [ ( v, nextCtx ) ] ++ (unfold op nextCtx)
-                    Failed _ -> []
-            )
-        result = unfold op ctx
+        applied = chain
+                  (\prevResult lastCtx reducedVal ->
+                      case prevResult of
+                          Matched v ->
+                            case reducedVal of
+                                ( prevMatches, _ ) ->
+                                    Next ( op, ( [ v ] ++ prevMatches, Just lastCtx ) )
+                          Failed _ -> Stop
+                  )
+                  op ( [], Nothing ) ctx
     in
-        case List.head result of
-            -- FIXME: store only the last context, not the context for every operation
-            Just ( v, lastCtx ) -> matchedList (List.map Tuple.first result) lastCtx
-            Nothing -> ctx |> matched ""
+        case applied of
+            ( allMatches, Just lastCtx ) -> lastCtx |> matchedList allMatches
+            _ -> ctx |> matched ""
 
 execSome : Operator o -> Context o -> OperatorResult o
 execSome op ctx =
@@ -390,43 +382,31 @@ execRegex regex desc ctx =
 
 -- UTILS
 
--- chain :
---        Operator o
---     -> v
---     -> (ParseResult o -> Context o -> v -> Maybe (Operator o, Context o, v))
---     -> Context o
---     -> OperatorResult o
--- -- fn: (\prevResult prevContext prevCollected -> Maybe (nextOp, nextCtx, collectedVal))
--- chain initialOp initialVal fn initialCtx =
---     List.foldl
---         (\)
+-- type Step a b = Next a | StopWith b | Stop
+type Step o v = Next ( Operator o, v ) | StopWith v | Stop
 
+chain :
+    -- (ParseResult o -> Context o -> v -> ChainStep (Operator o, v))
+       (ParseResult o -> Context o -> v -> Step o v)
+    -> Operator o
+    -> v
+    -> Context o
+    -> v
+chain stepFn initialOp initialVal initialCtx =
+    let
+        unfold = (\op ctx val ->
+                    let
+                        ( mayBeMatched, nextCtx ) = ( execute op ctx )
+                    in
+                        case (stepFn mayBeMatched nextCtx val) of
+                            Next (nextOp, nextVal) ->
+                                (unfold nextOp nextCtx nextVal)
+                            StopWith lastVal -> lastVal
+                            Stop -> val
 
---     let
---         reducedReport =
---             List.foldl
---                 (\op prevStep ->
---                     let
---                         ( maybeSucceededBefore, prevFailures, prevCtx ) = prevStep
---                     in
---                         case maybeSucceededBefore of
---                             Just _ -> prevStep
---                             Nothing ->
---                                 let
---                                     execResult = (execute op prevCtx)
---                                     ( parseResult, newCtx ) = execResult
---                                 in
---                                     case parseResult of
---                                         Matched _ -> ( Just parseResult, prevFailures, newCtx )
---                                         Failed _ -> ( Nothing, prevFailures ++ [ parseResult ], newCtx )
---                 )
---                 ( Nothing, [], ctx )
---                 ops
---         ( maybeChoiceSucceeded, failures, lastCtx ) = reducedReport
---     in
---         case maybeChoiceSucceeded of
---             Just (Matched success) -> ( Matched success, lastCtx )
---             _ -> ctx |> failedNestedCC failures
+                    )
+    in
+        unfold initialOp initialCtx initialVal
 
 isNotParsed : ParseResult o -> Bool
 isNotParsed result =
