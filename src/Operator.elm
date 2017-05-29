@@ -194,21 +194,18 @@ execChoice ops ctx =
             let
                 applied = chain
                     (\prevResult lastCtx reducedVal ->
-                        case reducedVal of
-                            ( [], maybeMatched, failures ) ->
-                                case prevResult of
-                                    Matched v ->
-                                        StopWith ( [], Just (v, lastCtx), failures )
-                                    Failed failure ->
-                                        case maybeMatched of
-                                            Just _ -> StopWith ( [], maybeMatched, [] )
-                                            Nothing -> StopWith ( [], Nothing, failures ++ [ prevResult ] )
-                            ( nextOp::restOps, maybeMatched, failures ) ->
-                                case prevResult of
-                                    Matched v ->
-                                        StopWith ( [], Just (v, lastCtx), failures )
-                                    Failed failure ->
-                                        Next ( nextOp, ( restOps, Nothing, failures ++ [ prevResult ] ) )
+                        let
+                            ( opsLeft, maybeMatched, failures ) = reducedVal
+                        in
+                            case ( prevResult, opsLeft ) of
+                                ( Matched v, _ ) ->
+                                    StopWith ( [], Just (v, lastCtx), failures )
+                                ( Failed failure, [] ) ->
+                                    case maybeMatched of
+                                        Just v -> StopWith ( [], maybeMatched, failures )
+                                        Nothing -> StopWith ( [], Nothing, failures ++ [ prevResult ] )
+                                ( Failed failure, nextOp::restOps ) ->
+                                    Next ( nextOp, ( restOps, Nothing, failures ++ [ prevResult ] ) )
                     )
                     firstOp ( restOps, Nothing, [] ) ctx
             in
@@ -218,31 +215,28 @@ execChoice ops ctx =
 
 execSequence : List (Operator o) -> Context o -> OperatorResult o
 execSequence ops ctx =
-    let
-        reducedReport =
-            List.foldl
-                (\op prevStep ->
-                    let
-                        ( maybeFailedBefore, prevMatches, prevCtx ) = prevStep
-                    in
-                        case maybeFailedBefore of
-                            Just _ -> prevStep
-                            Nothing ->
-                                let
-                                    execResult = (execute op prevCtx)
-                                    ( parseResult, newCtx ) = execResult
-                                in
-                                    case parseResult of
-                                        Matched v -> ( Nothing, prevMatches ++ [ v ], newCtx )
-                                        Failed _ -> ( Just parseResult, prevMatches, newCtx )
-                )
-                ( Nothing, [], ctx )
-                ops
-        ( maybeSequenceFailed, matches, lastCtx ) = reducedReport
-    in
-        case maybeSequenceFailed of
-            Just (Failed reason) -> ( Failed reason, ctx )
-            _ -> lastCtx |> matchedList matches
+    case ops of
+        [] -> ctx |> failedBy ExpectedAnything GotEndOfInput
+        (firstOp::restOps) ->
+            let
+                applied = chain
+                    (\prevResult lastCtx reducedVal ->
+                        let
+                            ( opsLeft, maybeFailed, matches, _ ) = reducedVal
+                        in
+                            case ( prevResult, opsLeft ) of
+                                ( Matched v, [] ) ->
+                                    StopWith ( [], Nothing, matches ++ [ v ], lastCtx )
+                                ( Matched v, nextOp::restOps ) ->
+                                    Next ( nextOp, ( restOps, Nothing, matches ++ [ v ], lastCtx ) )
+                                ( Failed failure, _ ) ->
+                                    StopWith ( [], Just failure, matches, lastCtx )
+                    )
+                    firstOp ( restOps, Nothing, [], ctx ) ctx
+            in
+                case applied of
+                    ( _, Nothing, matches, lastCtx ) -> lastCtx |> matchedList matches
+                    ( _, Just reason, failures, _ ) -> ctx |> failed reason
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
