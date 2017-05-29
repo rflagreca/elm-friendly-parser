@@ -195,7 +195,14 @@ execChoice ops ctx =
                 applied = chain
                     (\prevResult lastCtx reducedVal ->
                         case reducedVal of
-                            ( [], _, _ ) -> Stop
+                            ( [], maybeMatched, failures ) ->
+                                case prevResult of
+                                    Matched v ->
+                                        StopWith ( [], Just (v, lastCtx), failures )
+                                    Failed failure ->
+                                        case maybeMatched of
+                                            Just _ -> StopWith ( [], maybeMatched, [] )
+                                            Nothing -> StopWith ( [], Nothing, failures ++ [ prevResult ] )
                             ( nextOp::restOps, maybeMatched, failures ) ->
                                 case prevResult of
                                     Matched v ->
