@@ -39,6 +39,7 @@ testStartRule =
                 "foo"
                 (Failed NoStartRule)
                 (BasicParser.withRules Parser.noRules)
+        -- TODO: allow specifying custom startRule by name
         ]
 
 testDefiningAndCallingRules : Test
@@ -306,7 +307,7 @@ testActionMatching =
                             BasicParser.RString str ->
                                 Just (BasicParser.RString (Basics.toString (ctx.position)))
                             _ -> Just match))
-        , test "fails when user-code returned failure even if match is successful by itself" <|
+        , test "fails when user-code returned failure even when match was successful by itself" <|
             expectToFailToParseWith
                 "foo"
                 ( Failed ( ByExpectation ( ExpectedAnything, GotValue "" ) ) )
