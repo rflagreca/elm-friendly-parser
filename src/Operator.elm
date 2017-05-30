@@ -148,12 +148,12 @@ execute op ctx =
     ctx |> case op of
         NextChar -> execNextChar -- `ch`
         Match str -> execMatch str -- `match`
-        Choice ops -> execChoice ops -- `choice`
         Sequence ops -> execSequence ops -- `seqnc`
+        Choice ops -> execChoice ops -- `choice`
         Maybe_ op -> execMaybe op -- `maybe`
         TextOf op -> execTextOf op -- `text`
-        Any op -> execAny op -- `any`
         Some op -> execSome op -- `some`
+        Any op -> execAny op -- `any`
         And op -> execAnd op -- `and`
         Not op -> execNot op -- `not`
         Action op uc -> execAction op uc -- `action`
@@ -186,6 +186,31 @@ execMatch expectation ctx =
             else
                 ctx |> failedCC (ExpectedValue expectation)
 
+execSequence : List (Operator o) -> Context o -> OperatorResult o
+execSequence ops ctx =
+    case ops of
+        [] -> ctx |> failedBy ExpectedAnything GotEndOfInput
+        (firstOp::restOps) ->
+            let
+                applied = chain
+                    (\prevResult lastCtx reducedVal ->
+                        let
+                            ( opsLeft, maybeFailed, matches, _ ) = reducedVal
+                        in
+                            case ( prevResult, opsLeft ) of
+                                ( Matched v, [] ) ->
+                                    StopWith ( [], Nothing, matches ++ [ v ], lastCtx )
+                                ( Matched v, nextOp::restOps ) ->
+                                    Next ( nextOp, ( restOps, Nothing, matches ++ [ v ], lastCtx ) )
+                                ( Failed failure, _ ) ->
+                                    StopWith ( [], Just failure, matches, lastCtx )
+                    )
+                    firstOp ( restOps, Nothing, [], ctx ) ctx
+            in
+                case applied of
+                    ( _, Nothing, matches, lastCtx ) -> lastCtx |> matchedList matches
+                    ( _, Just reason, failures, _ ) -> ctx |> failed reason
+
 execChoice : List (Operator o) -> Context o -> OperatorResult o
 execChoice ops ctx =
     case ops of
@@ -213,30 +238,36 @@ execChoice ops ctx =
                     ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matchedWith success
                     ( _, Nothing, failures ) -> ctx |> failedNestedCC failures
 
-execSequence : List (Operator o) -> Context o -> OperatorResult o
-execSequence ops ctx =
-    case ops of
-        [] -> ctx |> failedBy ExpectedAnything GotEndOfInput
-        (firstOp::restOps) ->
-            let
-                applied = chain
-                    (\prevResult lastCtx reducedVal ->
-                        let
-                            ( opsLeft, maybeFailed, matches, _ ) = reducedVal
-                        in
-                            case ( prevResult, opsLeft ) of
-                                ( Matched v, [] ) ->
-                                    StopWith ( [], Nothing, matches ++ [ v ], lastCtx )
-                                ( Matched v, nextOp::restOps ) ->
-                                    Next ( nextOp, ( restOps, Nothing, matches ++ [ v ], lastCtx ) )
-                                ( Failed failure, _ ) ->
-                                    StopWith ( [], Just failure, matches, lastCtx )
-                    )
-                    firstOp ( restOps, Nothing, [], ctx ) ctx
-            in
-                case applied of
-                    ( _, Nothing, matches, lastCtx ) -> lastCtx |> matchedList matches
-                    ( _, Just reason, failures, _ ) -> ctx |> failed reason
+execSome : Operator o -> Context o -> OperatorResult o
+execSome op ctx =
+    let
+        ( onceResult, nextCtx ) = (execute op ctx)
+    in
+        case onceResult of
+            Matched v ->
+                let
+                    ( anyResult, lastCtx ) = (execAny op nextCtx)
+                in
+                    concat onceResult anyResult lastCtx
+            failure -> ( failure, ctx )
+
+execAny : Operator o -> Context o -> OperatorResult o
+execAny op ctx =
+    let
+        applied = chain
+                  (\prevResult lastCtx reducedVal ->
+                      case prevResult of
+                          Matched v ->
+                            case reducedVal of
+                                ( prevMatches, _ ) ->
+                                    Next ( op, ( [ v ] ++ prevMatches, Just lastCtx ) )
+                          Failed _ -> Stop
+                  )
+                  op ( [], Nothing ) ctx
+    in
+        case applied of
+            ( allMatches, Just lastCtx ) -> lastCtx |> matchedList allMatches
+            _ -> ctx |> matched ""
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -258,37 +289,6 @@ execTextOf op ctx =
                 newCtx |> matched
                     (newCtx.input |> String.slice prevPos newCtx.position)
             failure -> failure
-
-execAny : Operator o -> Context o -> OperatorResult o
-execAny op ctx =
-    let
-        applied = chain
-                  (\prevResult lastCtx reducedVal ->
-                      case prevResult of
-                          Matched v ->
-                            case reducedVal of
-                                ( prevMatches, _ ) ->
-                                    Next ( op, ( [ v ] ++ prevMatches, Just lastCtx ) )
-                          Failed _ -> Stop
-                  )
-                  op ( [], Nothing ) ctx
-    in
-        case applied of
-            ( allMatches, Just lastCtx ) -> lastCtx |> matchedList allMatches
-            _ -> ctx |> matched ""
-
-execSome : Operator o -> Context o -> OperatorResult o
-execSome op ctx =
-    let
-        ( onceResult, nextCtx ) = (execute op ctx)
-    in
-        case onceResult of
-            Matched v ->
-                let
-                    ( anyResult, lastCtx ) = (execAny op nextCtx)
-                in
-                    concat onceResult anyResult lastCtx
-            failure -> ( failure, ctx )
 
 execAnd : Operator o -> Context o -> OperatorResult o
 execAnd op ctx =
