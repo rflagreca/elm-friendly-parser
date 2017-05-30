@@ -90,7 +90,7 @@ testDefiningAndCallingRules =
                 expectToFailToParseWith
                     "bar"
                     (Failed (FollowingRule "test"
-                        (ByExpectation (ExpectedValue "foo", GotValue "bar"))))
+                        (ByExpectation (ExpectedValue "foo", GotValue "b")))) -- GotValue "bar"
                     (parser |> BasicParser.startWith (call "test"))
         ]
 
@@ -109,7 +109,7 @@ testBasicMatching =
         , test "reports the failed match properly" <|
             expectToFailToParseWith
                 "for"
-                ( Failed (ByExpectation (ExpectedValue "foo", GotValue "for") ) )
+                ( Failed (ByExpectation (ExpectedValue "foo", GotValue "f") ) ) -- GotValue "for"
                 (BasicParser.start <| (match "foo"))
         ]
 
