@@ -241,33 +241,33 @@ execChoice ops ctx =
 execSome : Operator o -> Context o -> OperatorResult o
 execSome op ctx =
     let
-        ( onceResult, nextCtx ) = (execute op ctx)
-    in
-        case onceResult of
-            Matched v ->
-                let
-                    ( anyResult, lastCtx ) = (execAny op nextCtx)
-                in
-                    concat onceResult anyResult lastCtx
-            failure -> ( failure, ctx )
-
-execAny : Operator o -> Context o -> OperatorResult o
-execAny op ctx =
-    let
         applied = chain
                   (\prevResult lastCtx reducedVal ->
                       case prevResult of
                           Matched v ->
                             case reducedVal of
-                                ( prevMatches, _ ) ->
-                                    Next ( op, ( [ v ] ++ prevMatches, Just lastCtx ) )
-                          Failed _ -> Stop
+                                ( prevMatches, _, _ ) ->
+                                    Next ( op, ( [ v ] ++ prevMatches, Just lastCtx, Nothing ) )
+                          Failed f ->
+                            case reducedVal of
+                                ( [], _, _ ) -> StopWith ( [], Nothing, Just f )
+                                _ -> Stop
                   )
-                  op ( [], Nothing ) ctx
+                  op ( [], Nothing, Nothing ) ctx
     in
         case applied of
-            ( allMatches, Just lastCtx ) -> lastCtx |> matchedList allMatches
-            _ -> ctx |> matched ""
+            ( allMatches, Just lastCtx, Nothing ) -> lastCtx |> matchedList allMatches
+            ( _, _, Just failure ) -> ctx |> failed failure
+            _ -> ctx |> failedBy ExpectedAnything GotEndOfInput
+
+execAny : Operator o -> Context o -> OperatorResult o
+execAny op ctx =
+    let
+        someResult = (execSome op ctx)
+    in
+        case someResult of
+            ( Matched _, _ ) -> someResult
+            ( Failed _, _ ) -> ctx |> matched ""
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -383,7 +383,8 @@ execRegex regex desc ctx =
 
 -- UTILS
 
--- type Step a b = Next a | StopWith b | Stop
+-- TODO: type Step o v f = TryNext ( Operator o, v ) | Success v | Success | Failure f
+--       chain should return Success or Failure then
 type Step o v = Next ( Operator o, v ) | StopWith v | Stop
 
 chain :
