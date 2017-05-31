@@ -20,10 +20,13 @@ type alias Context o =
     , adapt: Adapter o
 }
 
+type ActionResult o = Pass o | PassThrough | Fail
+type PrefixActionResult = Continue | Halt
+
 type alias OperatorResult o = (ParseResult o, Context o)
 
-type alias UserCode o = (o -> Context o -> (Maybe o))
-type alias UserPrefixCode o = (Context o -> Bool)
+type alias UserCode o = (o -> Context o -> (ActionResult o))
+type alias UserPrefixCode o = (Context o -> PrefixActionResult)
 
 type OperatorType o =
       NextChar -- 1. `ch`
@@ -316,8 +319,9 @@ execAction op userCode ctx =
         case result of
             Matched v ->
                 case (userCode v newCtx) of
-                    Just userV -> ( Matched userV, newCtx )
-                    Nothing -> newCtx |> failedCC ExpectedAnything
+                    Pass userV -> newCtx |> matchedWith userV
+                    PassThrough -> newCtx |> matchedWith v
+                    Fail -> newCtx |> failedCC ExpectedAnything
             Failed _ -> ( result, newCtx )
 
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
@@ -326,8 +330,8 @@ execPre userCode ctx =
         result = (userCode ctx)
     in
         case result of
-            True -> ctx |> matched ""
-            False -> ctx |> failedCC ExpectedEndOfInput
+            Continue -> ctx |> matched ""
+            Halt -> ctx |> failedCC ExpectedEndOfInput
 
 execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
 execNegPre userCode ctx =
@@ -335,8 +339,8 @@ execNegPre userCode ctx =
         result = (userCode ctx)
     in
         case result of
-            True -> ctx |> failedCC ExpectedEndOfInput
-            False -> ctx |> matched ""
+            Continue -> ctx |> failedCC ExpectedEndOfInput
+            Halt -> ctx |> matched ""
 
 execLabel : String -> Operator o -> Context o -> OperatorResult o
 execLabel name op ctx =

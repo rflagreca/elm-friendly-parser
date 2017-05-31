@@ -286,7 +286,7 @@ testActionMatching =
                 "foo"
                 "magic"
                 (BasicParser.start <| action (match "foo")
-                    (\match ctx -> Just (BasicParser.RString "magic")))
+                    (\match ctx -> Pass (BasicParser.RString "magic")))
         , test "provides access to the matched chunk" <|
             expectToParse
                 "foo"
@@ -295,8 +295,8 @@ testActionMatching =
                     (\match ctx ->
                         case match of
                             BasicParser.RString str ->
-                                Just (BasicParser.RString (str ++ "magic"))
-                            _ -> Just match))
+                                Pass (BasicParser.RString (str ++ "magic"))
+                            _ -> Pass match))
         , test "provides access to the position" <|
             expectToParse
                 "foo"
@@ -305,14 +305,14 @@ testActionMatching =
                     (\match ctx ->
                         case match of
                             BasicParser.RString str ->
-                                Just (BasicParser.RString (Basics.toString (ctx.position)))
-                            _ -> Just match))
+                                Pass (BasicParser.RString (Basics.toString (ctx.position)))
+                            _ -> Pass match))
         , test "fails when user-code returned failure even when match was successful by itself" <|
             expectToFailToParseWith
                 "foo"
                 ( Failed ( ByExpectation ( ExpectedAnything, GotValue "" ) ) )
                 (BasicParser.start <| action (match "foo")
-                    (\match ctx -> Nothing))
+                    (\match ctx -> Fail))
         -- TODO: lists etc.
         ]
 
@@ -324,7 +324,7 @@ testPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ pre (\_ -> True)
+                    [ pre (\_ -> Continue)
                     , (match "foo")
                     ])
         , test "fails when user-code returned False" <|
@@ -332,7 +332,7 @@ testPreMatching =
                 "foo"
                 ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "f" ) ) )
                 (BasicParser.start <| seqnc
-                    [ pre (\_ -> False)
+                    [ pre (\_ -> Halt)
                     , (match "foo")
                     ])
         , test "provides access to the position" <|
@@ -340,7 +340,7 @@ testPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ pre (\ctx -> ctx.position == 0)
+                    [ pre (\ctx -> if ctx.position == 0 then Continue else Halt)
                     , (match "foo")
                     ])
         ]
@@ -353,7 +353,7 @@ testNegPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ xpre (\_ -> False)
+                    [ xpre (\_ -> Halt)
                     , (match "foo")
                     ])
         , test "fails when user-code returned True" <|
@@ -361,7 +361,7 @@ testNegPreMatching =
                 "foo"
                 ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "f" ) ) )
                 (BasicParser.start <| seqnc
-                    [ xpre (\_ -> True)
+                    [ xpre (\_ -> Continue)
                     , (match "foo")
                     ])
         , test "provides access to the position" <|
@@ -369,7 +369,7 @@ testNegPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ xpre (\ctx -> ctx.position /= 0)
+                    [ xpre (\ctx -> if ctx.position /= 0 then Continue else Halt)
                     , (match "foo")
                     ])
         ]
@@ -391,7 +391,10 @@ testLabelMatching =
                         [ label "xyz" (match "foo")
                         , match "bar"
                         , action (match "x")
-                                 (\val ctx -> Dict.get "xyz" ctx.values)
+                                 (\val ctx ->
+                                    case Dict.get "xyz" ctx.values of
+                                        Just val -> Pass val
+                                        Nothing -> Fail)
                         ])
         , test "still fails when match failed" <|
             expectToFailToParse

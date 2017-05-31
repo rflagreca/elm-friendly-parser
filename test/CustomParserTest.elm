@@ -55,7 +55,7 @@ suite =
         , test "should replace value with the one returned from action code" <|
             \() ->
                 let
-                    myParser = start <| (action (match "abc") (\_ _ -> Just 42))
+                    myParser = start <| (action (match "abc") (\_ _ -> Pass 42))
                 in
                     Expect.equal
                         (Matched 42)
