@@ -37,8 +37,8 @@ Integer "integer"
 = [0-9]+ { return parseInt(text(), 10); }
 
 _ "whitespace"
-= [ \t\n\r]*
-    """
+= [ \\t\\n\\r]*
+"""
 
 arithmeticsPEGNoCode : String
 arithmeticsPEGNoCode =
@@ -57,8 +57,8 @@ Integer "integer"
 = [0-9]+ { <CODE> }
 
 _ "whitespace"
-= [ \t\n\r]*
-    """
+= [ \\t\\n\\r]*
+"""
 
 suite : Test
 suite =

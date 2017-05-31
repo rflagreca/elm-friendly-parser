@@ -20,8 +20,8 @@ type alias Context o =
     , adapt: Adapter o
 }
 
-type ActionResult o = Pass o | PassThrough | Fail
-type PrefixActionResult = Continue | Halt
+type ActionResult o = Pass o | PassThrough | Fail -- Return o | PassThrough | Fail
+type PrefixActionResult = Continue | Halt -- Continue | Stop (change ChainStep name to End or Exit/ExitWith)
 
 type alias OperatorResult o = (ParseResult o, Context o)
 
@@ -31,7 +31,7 @@ type alias UserPrefixCode o = (Context o -> PrefixActionResult)
 type OperatorType o =
       NextChar -- 1. `ch`
     | Match String -- 2. `match`
-    | Regex Regex.Regex String -- 3. `re`
+    | Regex String (Maybe String) -- 3. `re`
     | TextOf (Operator o) -- 4. `text`
     | Maybe_ (Operator o) -- 5. `maybe`
     | Some (Operator o) -- 6. `some`
@@ -136,9 +136,13 @@ call : RuleName -> Operator o
 call ruleName =
     Call ruleName
 
-re : Regex.Regex -> String -> Operator o
-re regex description =
-    Regex regex description
+re : String -> Operator o
+re regex_ =
+    Regex regex_ Nothing
+
+redesc : String -> String -> Operator o
+redesc regex_ description =
+    Regex regex_ (Just description)
 
 -- rule : RuleName -> Operator o -> Operator o
 -- rule ruleName op =
@@ -368,22 +372,27 @@ execCallAs ruleAlias realRuleName ctx =
 -- execDefineRule ruleName op ctx =
 --     matched "" { ctx | rules = ctx.rules |> addRule_ ruleName op }
 
-execRegex : Regex.Regex -> String -> Context o -> OperatorResult o
-execRegex regex desc ctx =
+execRegex : String -> Maybe String -> Context o -> OperatorResult o
+execRegex regex maybeDesc ctx =
+    -- FIXME: cache all regular expressions with Regex.Regex instances
     let
-        matches = Regex.find (Regex.AtMost 1) regex
+        regexInstance = Regex.regex regex
+        matches = Regex.find (Regex.AtMost 1) regexInstance
                     (String.slice ctx.position ctx.inputLength ctx.input)
         -- FIXME: add `^` to the start, so Regex with try matching from the start,
         --        which should be faster
         firstMatch = List.head matches
+        description = case maybeDesc of
+                        Just d -> d
+                        Nothing -> regex
     in
         case firstMatch of
             Just match ->
                 if match.index == 0 then
                     ctx |> matched match.match
                 else
-                    ctx |> failedRE desc
-            Nothing -> ctx |> failedRE desc
+                    ctx |> failedRE description
+            Nothing -> ctx |> failedRE description
 
 -- UTILS
 

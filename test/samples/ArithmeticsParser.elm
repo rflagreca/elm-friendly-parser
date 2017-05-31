@@ -50,32 +50,40 @@ rules =
             ]
       )
     , ( "Term",
-        seqnc
-            [ label "head" (call "Factor")
-            , label "tail"
-                (any (seqnc
-                    [ call "whitespace"
-                    , choice [ match "*", match "/" ]
-                    , call "whitespace"
-                    , call "Factor"
-                    ]
-                ) )
-            ])
+        action
+            ( seqnc
+                [ label "head" (call "Factor")
+                , label "tail"
+                    (any (seqnc
+                        [ call "whitespace"
+                        , choice [ match "*", match "/" ]
+                        , call "whitespace"
+                        , call "Factor"
+                        ]
+                    ) )
+                ]
+            )
+        (\_ _ -> Fail)
+      )
     , ( "Factor",
         choice
-            [ seqnc
-                [ match "("
-                , call "whitespace"
-                , label "expr" (call "Expression")
-                ]
+            [ action
+                ( seqnc
+                    [ match "("
+                    , call "whitespace"
+                    , label "expr" (call "Expression")
+                    ]
+                )
+                (\_ _ -> Fail)
             , call "Integer"
             ]
-       )
+      )
     , ( "Integer",
-        some (re (Regex.regex "[0-9]") "nums")
+        action ( some (re "[0-9]") )
+        (\_ _ -> Fail)
       )
     , ( "whitespace",
-        any (re (Regex.regex "[\t\n\r]") "tabs")
+        any (re "[\t\n\r]")
       )
     ]
 
