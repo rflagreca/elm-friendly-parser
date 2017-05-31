@@ -26,23 +26,23 @@ type alias UserCode o = (o -> Context o -> (Maybe o))
 type alias UserPrefixCode o = (Context o -> Bool)
 
 type OperatorType o =
-      NextChar -- 1. `ch` -- DONE
-    | Match String -- 2. `match` -- DONE
+      NextChar -- 1. `ch`
+    | Match String -- 2. `match`
     | Regex Regex.Regex String -- 3. `re`
-    | TextOf (Operator o) -- 4. `text` -- DONE
-    | Maybe_ (Operator o) -- 5. `maybe` -- DONE
-    | Some (Operator o) -- 6. `some` -- 1/2 DONE
-    | Any (Operator o)  -- 7. `any` -- DONE
-    | And (Operator o) -- 8. `and` -- DONE
-    | Not (Operator o) -- 9. `not` -- DONE
-    | Sequence (List (Operator o)) -- 10. `seqnc` -- DONE
-    | Choice (List (Operator o)) -- 11. `choice` -- DONE
-    | Action (Operator o) (UserCode o) -- 12. `action` -- DONE
-    | PreExec (UserPrefixCode o) -- 13. `pre` -- DONE
-    | NegPreExec (UserPrefixCode o) -- 14. `xpre` -- DONE
-    | Label String (Operator o) -- 15. `label` -- DONE
-    -- | Rule RuleName (Operator o) -- 16. `rule` -- has no real need, done in comments
-    | Call RuleName -- 17. `call` a.k.a `ref` -- DONE
+    | TextOf (Operator o) -- 4. `text`
+    | Maybe_ (Operator o) -- 5. `maybe`
+    | Some (Operator o) -- 6. `some`
+    | Any (Operator o)  -- 7. `any`
+    | And (Operator o) -- 8. `and`
+    | Not (Operator o) -- 9. `not`
+    | Sequence (List (Operator o)) -- 10. `seqnc`
+    | Choice (List (Operator o)) -- 11. `choice`
+    | Action (Operator o) (UserCode o) -- 12. `action`
+    | PreExec (UserPrefixCode o) -- 13. `pre`
+    | NegPreExec (UserPrefixCode o) -- 14. `xpre`
+    | Label String (Operator o) -- 15. `label`
+    -- | Rule RuleName (Operator o) -- 16. `rule`
+    | Call RuleName -- 17. `call` a.k.a `ref`
     -- | Alias String (Operator o) -- 18. `as`
     | CallAs RuleName RuleName
 

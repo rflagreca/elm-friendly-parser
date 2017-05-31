@@ -44,7 +44,7 @@ rules =
                     [ call "whitespace"
                     , choice [ match "+", match "-" ]
                     , call "whitespace"
-                    , call "Factor"
+                    , call "Term"
                     ]
                 ) )
             ]

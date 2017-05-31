@@ -40,13 +40,33 @@ _ "whitespace"
 = [ \t\n\r]*
     """
 
+arithmeticsPEGNoCode : String
+arithmeticsPEGNoCode =
+    """
+Expression
+= head:Term tail:(_ ("+" / "-") _ Term)* { <CODE> }
+
+Term
+= head:Factor tail:(_ ("*" / "/") _ Factor)* { <CODE> }
+
+Factor
+= "(" _ expr:Expression _ ")" { <CODE> }
+/ Integer
+
+Integer "integer"
+= [0-9]+ { <CODE> }
+
+_ "whitespace"
+= [ \t\n\r]*
+    """
+
 suite : Test
 suite =
     describe "exporting basic friendly parser"
         [ test "should use custom adapter to adapt matching values" <|
             \() ->
                 Expect.equal
-                    arithmeticsPEG
+                    arithmeticsPEGNoCode
                     (Export.parser ArithmeticsParser.parser)
         ]
 
