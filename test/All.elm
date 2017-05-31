@@ -8,6 +8,7 @@ import UtilsTest exposing (suite)
 import ParserTest exposing (suite)
 import BasicParserTest exposing (suite)
 import CustomParserTest exposing (suite)
+import ParserExportTest exposing (suite)
 
 
 allSuites : Test
@@ -17,6 +18,7 @@ allSuites =
         , ParserTest.suite
         , BasicParserTest.suite
         , CustomParserTest.suite
+        , ParserExportTest.suite
         ]
 
 
