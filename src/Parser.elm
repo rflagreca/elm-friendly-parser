@@ -15,7 +15,7 @@ parse parser input =
     let
         ctx = (initContext parser input)
     in
-        case getStartRule parser of
+        case getStartRule ctx of
             Just startOperator ->
                 extractParseResult (execute startOperator ctx)
             Nothing -> Failed NoStartRule
@@ -57,11 +57,16 @@ initContext parser input =
     , rules = parser.rules
     , values = noValues
     , adapt = parser.adapt
+    , startRule = "start"
     }
 
-getStartRule : Parser o -> Maybe (Operator o)
-getStartRule parser =
-    Dict.get "start" parser.rules
+getStartRule : Context o -> Maybe (Operator o)
+getStartRule ctx =
+    Dict.get ctx.startRule ctx.rules
+
+setStartRule : RuleName -> Context o -> Context o
+setStartRule name ctx =
+    { ctx | startRule = name }
 
 addRule : RuleName -> Operator o -> Parser o -> Parser o
 addRule name op parser =

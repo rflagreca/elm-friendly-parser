@@ -18,6 +18,7 @@ type alias Context o =
     , rules: Rules o
     , values: Values o
     , adapt: Adapter o
+    , startRule: String
 }
 
 type ActionResult o = Pass o | PassThrough | Fail -- Return o | PassThrough | Fail
