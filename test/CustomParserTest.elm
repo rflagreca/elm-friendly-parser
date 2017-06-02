@@ -7,7 +7,16 @@ import Operator exposing (..)
 import Parser exposing (..)
 import User exposing (..)
 
--- THE DEFINITION
+import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
+
+suite : Test
+suite =
+    describe "all the custom parsers"
+        [ customParserTest
+        , arithmeticsParserTest
+        ]
+
+-- CUSTOM : THE DEFINITION
 
 type alias MyReturnType = Int
 
@@ -22,11 +31,11 @@ adapter input =
         User.AList list -> List.length list
         User.ARule name value -> String.length name
 
--- THE TEST
+-- CUSTOM : THE TEST
 
-suite : Test
-suite =
-    describe "custom friendly parser"
+customParserTest : Test
+customParserTest =
+    describe "very custom friendly parser"
         [ test "should use custom adapter to adapt matching values" <|
             \() ->
                 let
@@ -62,3 +71,14 @@ suite =
                         (Parser.parse myParser "abc")
         ]
 
+-- TEST OTHER SAMPLE PARSERS
+
+arithmeticsParserTest : Test
+arithmeticsParserTest =
+    describe "arithmetics friendly parser"
+        [ test "should use custom adapter to adapt matching values" <|
+            \() ->
+                Expect.equal
+                    (Matched 3)
+                    (Parser.parse ArithmeticsParser.parser "1 + 2")
+        ]
