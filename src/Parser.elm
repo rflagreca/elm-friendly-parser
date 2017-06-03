@@ -7,15 +7,16 @@ import Operator exposing (..)
 
 type alias Parser o = {
     adapt: Adapter o,
-    rules: Rules o
+    rules: Rules o,
+    startRule: String
 }
 
 parse : Parser o -> String -> ParseResult o
 parse parser input =
     let
-        ctx = (initContext parser input)
+        ctx = (initContext input)
     in
-        case getStartRule ctx of
+        case getStartRule parser of
             Just startOperator ->
                 extractParseResult (execute startOperator ctx)
             Nothing -> Failed NoStartRule
@@ -27,6 +28,7 @@ withRules : Rules o -> Adapter o -> Parser o
 withRules rules adapter =
     { adapt = adapter
     , rules = rules
+    , startRule = "start"
     }
 
 -- TODO: withRules should accept RulesList instead
@@ -49,24 +51,13 @@ startWith op parser =
 addStartRule : Operator o -> Parser o -> Parser o
 addStartRule = startWith
 
-initContext : Parser o -> String -> Context o
-initContext parser input =
-    { input = input
-    , inputLength = String.length input
-    , position = 0
-    , rules = parser.rules
-    , values = noValues
-    , adapt = parser.adapt
-    , startRule = "start"
-    }
-
 getStartRule : Context o -> Maybe (Operator o)
 getStartRule ctx =
     Dict.get ctx.startRule ctx.rules
 
-setStartRule : RuleName -> Context o -> Context o
-setStartRule name ctx =
-    { ctx | startRule = name }
+setStartRule : RuleName -> Parser o -> Parser o
+setStartRule name parser =
+    { parser | startRule = name }
 
 addRule : RuleName -> Operator o -> Parser o -> Parser o
 addRule name op parser =
@@ -76,5 +67,6 @@ getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
     Dict.get name parser.rules
 
-noValues : Values v
-noValues = Dict.empty
+addRule : RuleName -> Operator o -> Rules o -> Rules o
+addRule name op rules =
+    rules |> Dict.insert name op

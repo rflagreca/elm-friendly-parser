@@ -4,22 +4,10 @@ import Dict exposing (Dict)
 import Regex
 
 import User exposing (..)
+import Context exposing (..)
 
 type alias Rules o = Dict RuleName (Operator o)
 type alias RulesList o = List ( RuleName, Operator o )
-
--- FIXME: Merge Parser and Context in a Parser or Context record ??
-
-type alias Context o =
-    { input: String
-    , inputLength: Int
-    , position: Int
---    , previousPosition: Int
-    , rules: Rules o
-    , values: Values o
-    , adapt: Adapter o
-    , startRule: String
-}
 
 type ActionResult o = Pass o | PassThrough | Fail -- Return o | PassThrough | Fail
 type PrefixActionResult = Continue | Halt -- Continue | Stop (change ChainStep name to End or Exit/ExitWith)
@@ -541,12 +529,4 @@ concat resultOne resultTwo inContext =
         ( Matched vOne, Matched vTwo ) ->
             matchedList [ vOne, vTwo ] inContext
         _ -> ( resultTwo, inContext )
-
-addRule : RuleName -> Operator o -> Rules o -> Rules o
-addRule name op rules =
-    rules |> Dict.insert name op
-
-getRule : RuleName -> Context o -> Maybe (Operator o)
-getRule name ctx =
-    Dict.get name ctx.rules
 
