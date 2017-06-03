@@ -3,8 +3,6 @@ module Export exposing (..)
 import Dict
 
 import Parser exposing (..)
-import Operator exposing (..)
-import User exposing (..)
 
 rootOperator : Operator o -> String
 rootOperator op =

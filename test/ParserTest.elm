@@ -3,8 +3,6 @@ module ParserTest exposing (suite)
 import Test exposing (..)
 import Expect
 
-import User exposing (..)
-import Operator exposing (..)
 import Parser exposing (..)
 
 suite : Test

@@ -1,7 +1,5 @@
 module BasicParser.Parser exposing (..)
 
-import User exposing (..)
-import Operator exposing (..)
 import Parser exposing (..)
 
 type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
@@ -18,11 +16,11 @@ start : Operator -> BasicParser
 start op =
     Parser.start op adapter
 
-startWith : Operator -> BasicParser -> BasicParser
-startWith = Parser.startWith
+-- startWith : Operator -> BasicParser -> BasicParser
+-- startWith = Parser.startWith
 
-addStartRule : Operator -> BasicParser -> BasicParser
-addStartRule = Parser.addStartRule
+-- addStartRule : Operator -> BasicParser -> BasicParser
+-- addStartRule = Parser.addStartRule
 
 parse : BasicParser -> String -> ParseResult
 parse = Parser.parse

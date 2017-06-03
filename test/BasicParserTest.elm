@@ -6,7 +6,6 @@ import Regex
 import Test exposing (..)
 import Expect
 
-import Operator exposing (..)
 import Parser exposing (..)
 import BasicParser.Parser as BasicParser exposing (..)
 

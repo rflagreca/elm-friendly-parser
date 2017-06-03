@@ -1,8 +1,6 @@
 module Samples.ArithmeticsParser exposing (parser)
 
-import Operator exposing (..)
 import Parser exposing (..)
-import User exposing (..)
 
 import Regex
 

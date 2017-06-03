@@ -3,9 +3,7 @@ module CustomParserTest exposing (suite)
 import Test exposing (..)
 import Expect
 
-import Operator exposing (..)
 import Parser exposing (..)
-import User exposing (..)
 
 import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
 
