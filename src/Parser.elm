@@ -3,8 +3,6 @@ module Parser exposing (..)
 import Dict exposing (..)
 import Regex
 
-type alias RuleName = String
-
 type InputType o =
       AValue String
     | AList (List o)
@@ -12,6 +10,7 @@ type InputType o =
 
 type alias Adapter o = (InputType o -> o)
 
+type alias RuleName = String
 type alias Rules o = Dict RuleName (Operator o)
 type alias RulesList o = List ( RuleName, Operator o )
 
@@ -21,19 +20,26 @@ type alias Parser o =
     , startRule: String
     }
 
+init : Adapter o -> Parser o
+init adapter =
+    { adapt = adapter
+    , rules = noRules
+    , startRule = "start"
+    }
+
 type alias Values o = Dict String o
 
-type alias Context o =
+type alias State o =
     { input: String
     , inputLength: Int
     , position: Int
     , values: Values o
 }
 
-type alias ParsingState o = ( Parser o, Context o )
+type alias Context o = ( Parser o, State o )
 
-initContext : String -> Context o
-initContext input =
+initState : String -> State o
+initState input =
     { input = input
     , inputLength = String.length input
     , position = 0
@@ -46,11 +52,12 @@ noValues = Dict.empty
 parse : Parser o -> String -> ParseResult o
 parse parser input =
     let
-        ctx = (initContext input)
+        state = (initState input)
+        context = (parser, state)
     in
         case getStartRule parser of
             Just startOperator ->
-                extractParseResult (execute startOperator ctx)
+                extractParseResult (execute startOperator context)
             Nothing -> Failed NoStartRule
 
 noRules : Rules o
@@ -71,10 +78,7 @@ withListedRules rulesList adapter =
 
 start : Operator o -> Adapter o -> Parser o
 start op adapter =
-    let
-        justStartRule = (noRules |> addRule "start" op)
-    in
-        withRules justStartRule adapter
+    init adapter |> startWith op
 
 startWith : Operator o -> Parser o -> Parser o
 startWith op parser =
@@ -83,9 +87,9 @@ startWith op parser =
 addStartRule : Operator o -> Parser o -> Parser o
 addStartRule = startWith
 
-getStartRule : Context o -> Maybe (Operator o)
-getStartRule ctx =
-    Dict.get ctx.startRule ctx.rules
+getStartRule : Parser o -> Maybe (Operator o)
+getStartRule parser =
+    Dict.get parser.startRule parser.rules
 
 setStartRule : RuleName -> Parser o -> Parser o
 setStartRule name parser =
@@ -93,7 +97,7 @@ setStartRule name parser =
 
 addRule : RuleName -> Operator o -> Parser o -> Parser o
 addRule name op parser =
-    { parser | rules = parser.rules |> addRule name op }
+    { parser | rules = parser.rules |> Dict.insert name op }
 
 getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
@@ -102,7 +106,7 @@ getRule name parser =
 type ActionResult o = Pass o | PassThrough | Fail -- Return o | PassThrough | Fail
 type PrefixActionResult = Continue | Halt -- Continue | Stop (change ChainStep name to End or Exit/ExitWith)
 
-type alias OperatorResult o = (ParseResult o, Context o)
+type alias OperatorResult o = ( ParseResult o, Context o )
 
 type alias UserCode o = (o -> Context o -> (ActionResult o))
 type alias UserPrefixCode o = (Context o -> PrefixActionResult)
@@ -252,22 +256,26 @@ execute op ctx =
 
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
-    if (ctx.position >= ctx.inputLength) then
-        ctx |> failedBy ExpectedAnything GotEndOfInput
-    else
-        ctx |> advanceBy 1 |> matched (getNextChar ctx)
+    let
+        ( _, state ) = ctx
+    in
+        if (state.position >= state.inputLength) then
+            ctx |> failedBy ExpectedAnything GotEndOfInput
+        else
+            ctx |> advanceBy 1 |> matched (getNextChar ctx)
 
 execMatch : String -> Context o -> OperatorResult o
 execMatch expectation ctx =
     let
-        inputLength = ctx.inputLength
+        ( _, state ) = ctx
+        inputLength = state.inputLength
         expectationLength = String.length expectation
     in
-        if (ctx.position + expectationLength) > inputLength then
+        if (state.position + expectationLength) > inputLength then
             ctx |> failedBy (ExpectedValue expectation) GotEndOfInput
         else
             if (String.startsWith expectation
-                (ctx.input |> String.dropLeft ctx.position)) then
+                (state.input |> String.dropLeft state.position)) then
                 ctx |> advanceBy expectationLength |> matched expectation
             else
                 ctx |> failedCC (ExpectedValue expectation)
@@ -367,13 +375,17 @@ execMaybe op ctx =
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
     let
-        prevPos = ctx.position
+        ( _, state ) = ctx
+        prevPos = state.position
         result = execute op ctx
     in
         case result of
             ( Matched s, newCtx ) ->
-                newCtx |> matched
-                    (newCtx.input |> String.slice prevPos newCtx.position)
+                let
+                    ( _, newState ) = newCtx
+                in
+                    newCtx |> matched
+                        (newState.input |> String.slice prevPos newState.position)
             failure -> failure
 
 execAnd : Operator o -> Context o -> OperatorResult o
@@ -432,7 +444,12 @@ execLabel name op ctx =
         updatedCtx =
             case result of
                 Matched v ->
-                    { newCtx | values = newCtx.values |> Dict.insert name v }
+                    let
+                        ( parser, newState ) = newCtx
+                        updatedState =
+                            { newState | values = newState.values |> Dict.insert name v }
+                    in
+                        ( parser, updatedState )
                 Failed _ -> newCtx
     in
         ( result, updatedCtx )
@@ -443,9 +460,12 @@ execCall ruleName ctx =
 
 execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
 execCallAs ruleAlias realRuleName ctx =
-    case (getRule realRuleName ctx) of
-        Just op -> (execute op ctx) |> addRuleToResult ruleAlias
-        Nothing -> ctx |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar ctx)
+    let
+        ( parser, _ ) = ctx
+    in
+        case (getRule realRuleName parser) of
+            Just op -> (execute op ctx) |> addRuleToResult ruleAlias
+            Nothing -> ctx |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar ctx)
 
 -- execDefineRule : RuleName -> Operator o -> Context o -> OperatorResult o
 -- execDefineRule ruleName op ctx =
@@ -455,9 +475,10 @@ execRegex : String -> Maybe String -> Context o -> OperatorResult o
 execRegex regex maybeDesc ctx =
     -- FIXME: cache all regular expressions with Regex.Regex instances
     let
+        ( _, state ) = ctx
         regexInstance = Regex.regex regex
         matches = Regex.find (Regex.AtMost 1) regexInstance
-                    (String.slice ctx.position ctx.inputLength ctx.input)
+                    (String.slice state.position state.inputLength state.input)
         -- FIXME: add `^` to the start, so Regex with try matching from the start,
         --        which should be faster
         firstMatch = List.head matches
@@ -515,16 +536,28 @@ isParsedAs subject result =
         Failed _-> False
 
 advanceBy : Int -> Context o -> Context o
-advanceBy cnt ctx =
-    { ctx | position = ctx.position + cnt }
+advanceBy count ctx =
+    let
+        ( parser, state ) = ctx
+    in
+        ( parser
+        , { state | position = state.position + count }
+        )
+
+getNextSubstring : Context o -> Int -> Int -> String
+getNextSubstring ctx shift count =
+    let
+        ( _, state ) = ctx
+    in
+        String.slice (state.position + shift) (state.position + shift + count) state.input
 
 getNextChar : Context o -> String
 getNextChar ctx =
-    String.slice (ctx.position + 1) (ctx.position + 2) ctx.input
+    getNextSubstring ctx 1 1
 
 getCurrentChar : Context o -> String
 getCurrentChar ctx =
-    String.slice ctx.position (ctx.position + 1) ctx.input
+    getNextSubstring ctx 0 1
 
 gotChar : Context o -> Sample
 gotChar ctx =
@@ -544,15 +577,24 @@ matchedWith output ctx =
 
 matched : String -> Context o -> OperatorResult o
 matched val ctx =
-    matchedWith (ctx.adapt (AValue val)) ctx
+    let
+        ( parser, _ ) = ctx
+    in
+        matchedWith (parser.adapt (AValue val)) ctx
 
 matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
-    matchedWith (ctx.adapt (AList val)) ctx
+    let
+        ( parser, _ ) = ctx
+    in
+        matchedWith (parser.adapt (AList val)) ctx
 
 matchedRule : RuleName -> o -> Context o -> OperatorResult o
 matchedRule ruleName value ctx =
-    matchedWith (ctx.adapt (ARule ruleName value)) ctx
+    let
+        ( parser, _ ) = ctx
+    in
+        matchedWith (parser.adapt (ARule ruleName value)) ctx
 
 -- matchedFlatList : List o -> Context o -> OperatorResult o
 -- matchedFlatList val ctx =

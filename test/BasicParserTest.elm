@@ -70,7 +70,7 @@ testDefiningAndCallingRules =
                     ]
             in
                 expectToParseAsRule "foo" "foo" "test"
-                    (parser |> BasicParser.startWith (call "test"))
+                    (parser |> Parser.startWith (call "test"))
         , test "match should contain a rule name" <|
             let
                 parser = BasicParser.withListedRules
@@ -80,7 +80,7 @@ testDefiningAndCallingRules =
                 expectToMatchWith
                     "foo"
                     (RRule "test" (RString "foo"))
-                    (parser |> BasicParser.startWith (call "test"))
+                    (parser |> Parser.startWith (call "test"))
         , test "failure contains failed rule information" <|
             let
                 parser = BasicParser.withListedRules
@@ -91,7 +91,7 @@ testDefiningAndCallingRules =
                     "bar"
                     (Failed (FollowingRule "test"
                         (ByExpectation (ExpectedValue "foo", GotValue "b")))) -- GotValue "bar"
-                    (parser |> BasicParser.startWith (call "test"))
+                    (parser |> Parser.startWith (call "test"))
         ]
 
 testBasicMatching : Test
@@ -269,12 +269,12 @@ testNotMatching =
             expectToFailToParseWith
                 "foo"
                 ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "" ) ) )
-                (BasicParser.start <| Operator.not (match "foo"))
+                (BasicParser.start <| Parser.not (match "foo"))
         , test "matches when sample not exists" <|
             expectToParse
                 "bar"
                 ""
-                (BasicParser.start <| Operator.not (match "foo"))
+                (BasicParser.start <| Parser.not (match "foo"))
         ]
 
 testActionMatching : Test
@@ -301,10 +301,10 @@ testActionMatching =
                 "foo"
                 "3"
                 (BasicParser.start <| action (match "foo")
-                    (\match ctx ->
+                    (\match ( _, state ) ->
                         case match of
                             BasicParser.RString str ->
-                                Pass (BasicParser.RString (Basics.toString (ctx.position)))
+                                Pass (BasicParser.RString (Basics.toString (state.position)))
                             _ -> Pass match))
         , test "fails when user-code returned failure even when match was successful by itself" <|
             expectToFailToParseWith
@@ -339,7 +339,7 @@ testPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ pre (\ctx -> if ctx.position == 0 then Continue else Halt)
+                    [ pre (\(_, state) -> if state.position == 0 then Continue else Halt)
                     , (match "foo")
                     ])
         ]
@@ -368,7 +368,7 @@ testNegPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ xpre (\ctx -> if ctx.position /= 0 then Continue else Halt)
+                    [ xpre (\( _, state ) -> if state.position /= 0 then Continue else Halt)
                     , (match "foo")
                     ])
         ]
@@ -390,8 +390,8 @@ testLabelMatching =
                         [ label "xyz" (match "foo")
                         , match "bar"
                         , action (match "x")
-                                 (\val ctx ->
-                                    case Dict.get "xyz" ctx.values of
+                                 (\val ( _, state ) ->
+                                    case Dict.get "xyz" state.values of
                                         Just val -> Pass val
                                         Nothing -> Fail)
                         ])

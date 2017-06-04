@@ -25,9 +25,9 @@ start op =
 adapter : InputType MyReturnType -> MyReturnType
 adapter input =
     case input of
-        User.AValue str -> String.length str
-        User.AList list -> List.length list
-        User.ARule name value -> String.length name
+        Parser.AValue str -> String.length str
+        Parser.AList list -> List.length list
+        Parser.ARule name value -> String.length name
 
 -- CUSTOM : THE TEST
 
