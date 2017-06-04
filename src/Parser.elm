@@ -57,6 +57,7 @@ parse parser input =
     in
         case getStartRule parser of
             Just startOperator ->
+                -- TODO: extractParseResult (execCall parser.startRule context)
                 extractParseResult (execute startOperator context)
             Nothing -> Failed NoStartRule
 

@@ -6,12 +6,14 @@ import Expect
 import Parser exposing (..)
 
 import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
+import Samples.PhoneNumberParser as PhoneNumberParser exposing (..)
 
 suite : Test
 suite =
     describe "all the custom parsers"
         [ customParserTest
-        , arithmeticsParserTest
+        -- , arithmeticsParserTest
+        -- , phoneNumberParserTest
         ]
 
 -- CUSTOM : THE DEFINITION
@@ -74,9 +76,19 @@ customParserTest =
 arithmeticsParserTest : Test
 arithmeticsParserTest =
     describe "arithmetics friendly parser"
-        [ test "should use custom adapter to adapt matching values" <|
+        [ test "should parse the expression" <|
             \() ->
                 Expect.equal
-                    (Matched 3)
-                    (Parser.parse ArithmeticsParser.init "1 + 2")
+                    (Matched 14)
+                    (Parser.parse ArithmeticsParser.init "2 * (3 + 4)")
+        ]
+
+phoneNumberParserTest : Test
+phoneNumberParserTest =
+    describe "phone number friendly parser"
+        [ test "should parse the phone number" <|
+            \() ->
+                Expect.equal
+                    (Matched "33737 37373737")
+                    (Parser.parse PhoneNumberParser.init "+35[057]776-22-13")
         ]

@@ -34,37 +34,44 @@ type alias ReturnType = Float
 
 rules : RulesList ReturnType
 rules =
-    [ ( "Expression",
-        seqnc
-            [ label "head" (call "Term")
-            , label "tail"
-                (any (seqnc
-                    [ call "whitespace"
-                    , choice [ match "+", match "-" ]
-                    , call "whitespace"
-                    , call "Term"
-                    ]
-                ) )
-            ]
-      )
-    , ( "Term",
-        action
-            ( seqnc
-                [ label "head" (call "Factor")
+    [ ( "Expression"
+      , action
+            (seqnc
+                [ label "head" (call "Term")
                 , label "tail"
-                    (any (seqnc
-                        [ call "whitespace"
-                        , choice [ match "*", match "/" ]
-                        , call "whitespace"
-                        , call "Factor"
-                        ]
-                    ) )
+                    (any
+                        (seqnc
+                            [ call "whitespace"
+                            , choice [ match "+", match "-" ]
+                            , call "whitespace"
+                            , call "Term"
+                            ]
+                        )
+                    )
                 ]
             )
         (\_ _ -> Fail)
       )
-    , ( "Factor",
-        choice
+    , ( "Term"
+      , action
+            ( seqnc
+                [ label "head" (call "Factor")
+                , label "tail"
+                    (any
+                        (seqnc
+                            [ call "whitespace"
+                            , choice [ match "*", match "/" ]
+                            , call "whitespace"
+                            , call "Factor"
+                            ]
+                        )
+                    )
+                ]
+            )
+        (\_ _ -> Fail)
+      )
+    , ( "Factor"
+      , choice
             [ action
                 ( seqnc
                     [ match "("
@@ -76,12 +83,12 @@ rules =
             , call "Integer"
             ]
       )
-    , ( "Integer",
-        action ( some (re "[0-9]") )
+    , ( "Integer"
+      , action ( some (re "[0-9]") )
         (\_ _ -> Fail)
       )
-    , ( "whitespace",
-        any (re "[\t\n\r]")
+    , ( "whitespace"
+      , any (re "[ \t\n\r]")
       )
     ]
 
@@ -89,7 +96,7 @@ init : Parser ReturnType
 init =
        Parser.init adapter
     |> Parser.withRules rules
-    --|> Parser.setStartRule "Expression"
+    |> Parser.setStartRule "Expression"
 
 adapter : InputType ReturnType -> ReturnType
 adapter input =
