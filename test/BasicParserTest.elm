@@ -301,7 +301,7 @@ testActionMatching =
                 "foo"
                 "3"
                 (BasicParser.start <| action (match "foo")
-                    (\match ( _, state ) ->
+                    (\match state ->
                         case match of
                             BasicParser.RString str ->
                                 Pass (BasicParser.RString (Basics.toString (state.position)))
@@ -339,7 +339,7 @@ testPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ pre (\(_, state) -> if state.position == 0 then Continue else Halt)
+                    [ pre (\state -> if state.position == 0 then Continue else Halt)
                     , (match "foo")
                     ])
         ]
@@ -368,7 +368,7 @@ testNegPreMatching =
                 "foo"
                 [ "", "foo" ]
                 (BasicParser.start <| seqnc
-                    [ xpre (\( _, state ) -> if state.position /= 0 then Continue else Halt)
+                    [ xpre (\state -> if state.position /= 0 then Continue else Halt)
                     , (match "foo")
                     ])
         ]
@@ -390,7 +390,7 @@ testLabelMatching =
                         [ label "xyz" (match "foo")
                         , match "bar"
                         , action (match "x")
-                                 (\val ( _, state ) ->
+                                 (\val state ->
                                     case Dict.get "xyz" state.values of
                                         Just val -> Pass val
                                         Nothing -> Fail)

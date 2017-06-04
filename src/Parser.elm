@@ -108,8 +108,8 @@ type PrefixActionResult = Continue | Halt -- Continue | Stop (change ChainStep n
 
 type alias OperatorResult o = ( ParseResult o, Context o )
 
-type alias UserCode o = (o -> Context o -> (ActionResult o))
-type alias UserPrefixCode o = (Context o -> PrefixActionResult)
+type alias UserCode o = (o -> State o -> (ActionResult o))
+type alias UserPrefixCode o = (State o -> PrefixActionResult)
 
 type OperatorType o =
       NextChar -- 1. `ch`
@@ -410,10 +410,11 @@ execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
 execAction op userCode ctx =
     let
         ( result, newCtx ) = (execute op ctx)
+        ( _, newState ) = newCtx
     in
         case result of
             Matched v ->
-                case (userCode v newCtx) of
+                case (userCode v newState) of
                     Pass userV -> newCtx |> matchedWith userV
                     PassThrough -> newCtx |> matchedWith v
                     Fail -> newCtx |> failedCC ExpectedAnything
@@ -422,7 +423,8 @@ execAction op userCode ctx =
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
     let
-        result = (userCode ctx)
+        ( _, state ) = ctx
+        result = (userCode state)
     in
         case result of
             Continue -> ctx |> matched ""
@@ -431,7 +433,8 @@ execPre userCode ctx =
 execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
 execNegPre userCode ctx =
     let
-        result = (userCode ctx)
+        ( _, state ) = ctx
+        result = (userCode state)
     in
         case result of
             Continue -> ctx |> failedCC ExpectedEndOfInput
