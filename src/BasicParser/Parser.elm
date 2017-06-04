@@ -26,12 +26,11 @@ start op =
 -- addStartRule : Operator -> BasicParser -> BasicParser
 -- addStartRule = Parser.addStartRule
 
-parse : BasicParser -> String -> ParseResult
-parse = Parser.parse
+-- parse : BasicParser -> String -> ParseResult
+-- parse = Parser.parse
 
 withRules : RulesList -> BasicParser
-withRules rules =
-    Parser.withRules rules adapter
+withRules rules = init |> Parser.withRules rules
 
 adapter : InputType -> ReturnType
 adapter input =

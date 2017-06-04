@@ -86,7 +86,10 @@ rules =
     ]
 
 init : Parser ReturnType
-init = Parser.withRules rules adapter
+init =
+       Parser.init adapter
+    |> Parser.withRules rules
+    --|> Parser.setStartRule "Expression"
 
 adapter : InputType ReturnType -> ReturnType
 adapter input =
