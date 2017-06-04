@@ -19,7 +19,7 @@ testStartRule =
             expectToFailToParseWith
                 "foo"
                 (Failed NoStartRule)
-                (Parser.withRules Parser.noRules alwaysTestStringAdapter)
+                (Parser.init alwaysTestStringAdapter)
         ]
 
 testAdapters : Test

@@ -12,6 +12,10 @@ type alias Rules = Parser.Rules ReturnType
 type alias RulesList = Parser.RulesList ReturnType
 type alias InputType = Parser.InputType ReturnType
 
+init : BasicParser
+init =
+    Parser.init adapter
+
 start : Operator -> BasicParser
 start op =
     Parser.start op adapter
@@ -25,13 +29,9 @@ start op =
 parse : BasicParser -> String -> ParseResult
 parse = Parser.parse
 
-withRules : Rules -> BasicParser
+withRules : RulesList -> BasicParser
 withRules rules =
     Parser.withRules rules adapter
-
-withListedRules : RulesList -> BasicParser
-withListedRules rulesList =
-    Parser.withListedRules rulesList adapter
 
 adapter : InputType -> ReturnType
 adapter input =

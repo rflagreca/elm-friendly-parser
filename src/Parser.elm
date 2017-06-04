@@ -63,18 +63,12 @@ parse parser input =
 noRules : Rules o
 noRules = Dict.empty
 
-withRules : Rules o -> Adapter o -> Parser o
+withRules : RulesList o -> Adapter o -> Parser o
 withRules rules adapter =
     { adapt = adapter
-    , rules = rules
+    , rules = Dict.fromList rules
     , startRule = "start"
     }
-
--- TODO: withRules should accept RulesList instead
-
-withListedRules : RulesList o -> Adapter o -> Parser o
-withListedRules rulesList adapter =
-    withRules (Dict.fromList rulesList) adapter
 
 start : Operator o -> Adapter o -> Parser o
 start op adapter =

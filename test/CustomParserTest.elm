@@ -78,5 +78,5 @@ arithmeticsParserTest =
             \() ->
                 Expect.equal
                     (Matched 3)
-                    (Parser.parse ArithmeticsParser.parser "1 + 2")
+                    (Parser.parse ArithmeticsParser.init "1 + 2")
         ]

@@ -37,7 +37,7 @@ testStartRule =
             expectToFailToParseWith
                 "foo"
                 (Failed NoStartRule)
-                (BasicParser.withRules Parser.noRules)
+                BasicParser.init
         -- TODO: allow specifying custom startRule by name
         ]
 
@@ -47,7 +47,7 @@ testDefiningAndCallingRules =
         [ test "user should be able to add custom rules" <|
             let
                 ruleSpec = match "foo"
-                parser = BasicParser.withListedRules
+                parser = BasicParser.withRules
                     [ ( "test", ruleSpec )
                     ]
             in
@@ -57,15 +57,15 @@ testDefiningAndCallingRules =
                         (parser |> Parser.getRule "test"))
         , test "user should be able to call rules by name" <|
             let
-                parser = BasicParser.withListedRules
+                parser = BasicParser.withRules
                     [ ( "test", match "foo" )
                     , ( "start", call "test" )
                     ]
             in
-                expectToParseAsRule "foo" "foo"  "test" parser
+                expectToParseAsRule "foo" "foo" "test" parser
         , test "user should be able to call rules by name, v.2" <|
             let
-                parser = BasicParser.withListedRules
+                parser = BasicParser.withRules
                     [ ( "test", match "foo" )
                     ]
             in
@@ -73,7 +73,7 @@ testDefiningAndCallingRules =
                     (parser |> Parser.startWith (call "test"))
         , test "match should contain a rule name" <|
             let
-                parser = BasicParser.withListedRules
+                parser = BasicParser.withRules
                     [ ( "test", match "foo" )
                     ]
             in
@@ -83,7 +83,7 @@ testDefiningAndCallingRules =
                     (parser |> Parser.startWith (call "test"))
         , test "failure contains failed rule information" <|
             let
-                parser = BasicParser.withListedRules
+                parser = BasicParser.withRules
                     [ ( "test", match "foo" )
                     ]
             in

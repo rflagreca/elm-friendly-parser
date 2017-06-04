@@ -65,6 +65,6 @@ suite =
             \() ->
                 Expect.equal
                     arithmeticsPEGNoCode
-                    (Export.parser ArithmeticsParser.parser)
+                    (Export.parser ArithmeticsParser.init)
         ]
 

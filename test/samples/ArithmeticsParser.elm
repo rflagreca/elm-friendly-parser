@@ -1,4 +1,4 @@
-module Samples.ArithmeticsParser exposing (parser)
+module Samples.ArithmeticsParser exposing (init)
 
 import Parser exposing (..)
 
@@ -85,8 +85,8 @@ rules =
       )
     ]
 
-parser : Parser ReturnType
-parser = Parser.withListedRules rules adapter
+init : Parser ReturnType
+init = Parser.withRules rules adapter
 
 adapter : InputType ReturnType -> ReturnType
 adapter input =
