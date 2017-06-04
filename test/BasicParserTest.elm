@@ -146,6 +146,12 @@ testChoiceMatching =
                 "foo"
                 "foo"
                 (BasicParser.start <| choice [ match "a", match "foo", match "f" ])
+        , test "properly advances position" <|
+            expectToParse
+                "bars"
+                "4"
+                (BasicParser.start <| getPositionAfter
+                    (choice [ match "foo", match "bars" ]))
         ]
 
 testSequenceMatching : Test
@@ -240,6 +246,12 @@ testSomeMatching =
                 "fff"
                 [ "f", "f", "f" ]
                 (BasicParser.start <| some (match "f"))
+        , test "properly advances position" <|
+            expectToParse
+                "fff"
+                "3"
+                (BasicParser.start <|
+                    getPositionAfter (some (match "f")))
         , test "not matches when sample is not exits" <|
             expectToFailToParseWith
                 "bar"
@@ -410,6 +422,17 @@ testREMatching =
                 "foo"
                 "foo"
                 (BasicParser.start <| re "f?oo")
+        , test "can parse sequences of symbols" <|
+            expectToParseNested
+                "249"
+                [ "2", "4", "9" ]
+                (BasicParser.start <| some (re "[0-9]"))
+        , test "properly advances the position" <|
+            expectToParse
+                "2495"
+                "4"
+                (BasicParser.start <|
+                    getPositionAfter (some (re "[0-9]")))
         , test "fails when regular expression is not matching" <|
             expectToFailToParseWith
                 "boo"
@@ -480,3 +503,7 @@ expectToFailToParseWith input output parser =
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
                 r -> Expect.equal output r
+
+getPositionAfter : BasicParser.Operator -> BasicParser.Operator
+getPositionAfter op =
+    action op (\_ state -> Pass (BasicParser.RString (toString state.position)))

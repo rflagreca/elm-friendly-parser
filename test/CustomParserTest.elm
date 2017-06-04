@@ -13,7 +13,7 @@ suite =
     describe "all the custom parsers"
         [ customParserTest
         -- , arithmeticsParserTest
-        -- , phoneNumberParserTest
+        , phoneNumberParserTest
         ]
 
 -- CUSTOM : THE DEFINITION
@@ -89,6 +89,6 @@ phoneNumberParserTest =
         [ test "should parse the phone number" <|
             \() ->
                 Expect.equal
-                    (Matched "33737 37373737")
+                    (Matched "prefix:+-5-3-operator:[-7-5-0-]-local:6-7-7---2-2---3-1")
                     (Parser.parse PhoneNumberParser.init "+35[057]776-22-13")
         ]

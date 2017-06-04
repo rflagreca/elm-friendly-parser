@@ -487,7 +487,9 @@ execRegex regex maybeDesc ctx =
         case firstMatch of
             Just match ->
                 if match.index == 0 then
-                    ctx |> matched match.match
+                    ctx
+                        |> advanceBy (String.length match.match)
+                        |> matched match.match
                 else
                     ctx |> failedRE description
             Nothing -> ctx |> failedRE description
