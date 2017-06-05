@@ -7,13 +7,15 @@ import Parser exposing (..)
 
 import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
 import Samples.PhoneNumberParser as PhoneNumberParser exposing (..)
+import Samples.TypedPhoneNumberParser as TypedPhoneNumberParser exposing (..)
 
 suite : Test
 suite =
     describe "all the custom parsers"
         [ customParserTest
-        -- , arithmeticsParserTest
+        , arithmeticsParserTest
         , phoneNumberParserTest
+        , typedPhoneNumberParserTest
         ]
 
 -- CUSTOM : THE DEFINITION
@@ -89,6 +91,21 @@ phoneNumberParserTest =
         [ test "should parse the phone number" <|
             \() ->
                 Expect.equal
-                    (Matched "prefix:+-5-3-operator:[-7-5-0-]-local:6-7-7---2-2---3-1")
+                    (Matched "prefix:+53;operator:[057];local:776-22-13;")
                     (Parser.parse PhoneNumberParser.init "+35[057]776-22-13")
+        ]
+
+typedPhoneNumberParserTest : Test
+typedPhoneNumberParserTest =
+    describe "phone number friendly parser"
+        [ test "should parse the phone number" <|
+            \() ->
+                Expect.equal
+                    (Matched (TypedPhoneNumberParser.PhoneNumber
+                        { prefix = ("+", 35)
+                        , operator = 057
+                        , local = (776, 22, 13)
+                        }
+                    ))
+                    (Parser.parse TypedPhoneNumberParser.init "+35[057]776-22-13")
         ]

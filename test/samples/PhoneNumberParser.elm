@@ -47,5 +47,5 @@ adapter : InputType ReturnType -> ReturnType
 adapter input =
     case input of
         Parser.AValue str -> str
-        Parser.AList list -> String.join "-" list
-        Parser.ARule name value -> name ++ ":" ++ value
+        Parser.AList list -> String.join "" list
+        Parser.ARule name value -> name ++ ":" ++ value ++ ";"
