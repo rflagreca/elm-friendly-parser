@@ -5,7 +5,6 @@ import Parser exposing (..)
 type PhoneNumberPart =
     AString String
   | AList (List PhoneNumberPart)
-  | Dash
   | Prefix String Int
   | Operator Int
   | Local (Int, Int, Int)
@@ -20,11 +19,14 @@ type ReturnType = PhoneNumberPart
 rules : RulesList PhoneNumberPart
 rules =
     [ ( "phoneNumber"
-      , seqnc
-        [ maybe (call "prefix")
-        , maybe (call "operator")
-        , (call "local")
-        ]
+      , action
+        (seqnc
+            [ maybe (call "prefix")
+            , maybe (call "operator")
+            , (call "local")
+            ]
+        )
+        (\val _ -> extractPhoneNumber val)
       )
     , ( "prefix"
       , action
@@ -36,20 +38,26 @@ rules =
         (\val _ -> extractPrefix val)
       )
     , ( "operator"
-      , seqnc
-        [ choice [ match "(", match "[" ]
-        , some (re "[0-9]")
-        , choice [ match "]", match ")" ]
-        ]
+      , action
+        (seqnc
+            [ choice [ match "(", match "[" ]
+            , some (re "[0-9]")
+            , choice [ match "]", match ")" ]
+            ]
+        )
+        (\val _ -> extractOperator val)
       )
     , ( "local"
-      , seqnc
-        [ some (re "[0-9]")
-        , action (match "-") (\_ _ -> Pass Dash)
-        , some (re "[0-9]")
-        , action (match "-") (\_ _ -> Pass Dash)
-        , some (re "[0-9]")
-        ]
+      , action
+        ( seqnc
+            [ some (re "[0-9]")
+            , match "-"
+            , some (re "[0-9]")
+            , match "-"
+            , some (re "[0-9]")
+            ]
+        )
+        (\val _ -> extractLocal val)
       )
     ]
 
@@ -66,21 +74,95 @@ adapter input =
         Parser.AList list -> AList list
         Parser.ARule name value -> value
 
+isAString : PhoneNumberPart -> Bool
+isAString test =
+    case test of
+        AString _ -> True
+        _ -> False
+
+digitsToInt : List PhoneNumberPart -> Maybe Int
+digitsToInt probablyDigits =
+    let
+        collapse =
+            (\val prev ->
+                case prev of
+                    Just prevDigits ->
+                        case val of
+                            AString a ->
+                                Just (prevDigits ++ a)
+                            _ -> Nothing
+                    Nothing -> Nothing)
+    in
+        case List.foldl collapse (Just "") probablyDigits of
+            Just digitsString -> String.toInt digitsString |> Result.toMaybe
+            Nothing -> Nothing
+
 extractPrefix : PhoneNumberPart -> ActionResult PhoneNumberPart
 extractPrefix source =
   case source of
     AList vals ->
       if List.length vals == 2 then
         case vals of
-          (AString symbol)::(AString number)::_ ->
-            Pass (Prefix symbol
-                 (String.toInt number |> Result.withDefault 0))
+          (AString symbol)::(AList maybeDigits)::_ ->
+            case digitsToInt maybeDigits of
+                Just value -> Pass (Prefix symbol value)
+                Nothing -> Fail
           _ -> Fail
       else Fail
     _ -> Fail
 
-extractDash : PhoneNumberPart -> State PhoneNumberPart -> ActionResult PhoneNumberPart
-extractDash _ _ =
-    Pass Dash
+extractOperator : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractOperator source =
+    case source of
+        AList vals ->
+            if List.length vals == 3 then
+                case vals of
+                    _::(AList maybeDigits)::_ ->
+                        case digitsToInt maybeDigits of
+                            Just value -> Pass (Operator value)
+                            Nothing -> Fail
+                    _ -> Fail
+            else Fail
+        _ -> Fail
 
--- extractLocal : PhoneNumberPart -> PhoneNumberPart
+extractLocal : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractLocal source =
+    case source of
+        AList vals ->
+            if List.length vals == 5 then
+                case vals of
+                    (AList maybeDigits1)::_::(AList maybeDigits2)::_::(AList maybeDigits3)::_ ->
+                        case ( digitsToInt maybeDigits1
+                             , digitsToInt maybeDigits2
+                             , digitsToInt maybeDigits3
+                             ) of
+                            ( Just digits1
+                            , Just digits2
+                            , Just digits3
+                            ) -> Pass (Local (digits1, digits2, digits3))
+                            _ -> Fail
+                    _ -> Fail
+            else Fail
+        _ -> Fail
+
+extractPhoneNumber : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractPhoneNumber source =
+    case source of
+        AList vals ->
+            if List.length vals == 3 then
+                case vals of
+                    (Prefix symbol number)
+                  ::(Operator operatorNumber)
+                  ::(Local (local1, local2, local3))
+                  ::_ ->
+                        Pass
+                            (PhoneNumber
+                                { prefix = ( symbol, number )
+                                , operator = operatorNumber
+                                , local = ( local1, local2, local3 )
+                                }
+                            )
+                    _ -> Fail
+            else Fail
+        _ -> Fail
+
