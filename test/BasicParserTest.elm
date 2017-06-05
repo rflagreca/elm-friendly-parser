@@ -246,6 +246,19 @@ testSomeMatching =
                 "fff"
                 [ "f", "f", "f" ]
                 (BasicParser.start <| some (match "f"))
+        , test "keeps the order of occurences" <|
+            expectToParseNested
+                "abc"
+                [ "a", "b", "c" ]
+                (BasicParser.start <|
+                    some
+                        (choice
+                            [ match "a"
+                            , match "b"
+                            , match "c"
+                            ]
+                        )
+                )
         , test "properly advances position" <|
             expectToParse
                 "fff"

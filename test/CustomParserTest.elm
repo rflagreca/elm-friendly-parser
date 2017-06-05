@@ -91,7 +91,7 @@ phoneNumberParserTest =
         [ test "should parse the phone number" <|
             \() ->
                 Expect.equal
-                    (Matched "prefix:+53;operator:[057];local:776-22-13;")
+                    (Matched "prefix:+35;operator:[057];local:776-22-13;")
                     (Parser.parse PhoneNumberParser.init "+35[057]776-22-13")
         ]
 

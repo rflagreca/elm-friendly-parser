@@ -336,7 +336,7 @@ execSome op ctx =
                           Matched v ->
                             case reducedVal of
                                 ( prevMatches, _, _ ) ->
-                                    Next ( op, ( [ v ] ++ prevMatches, Just lastCtx, Nothing ) )
+                                    Next ( op, ( prevMatches ++ [ v ], Just lastCtx, Nothing ) )
                           Failed f ->
                             case reducedVal of
                                 ( [], _, _ ) -> StopWith ( [], Nothing, Just f )
