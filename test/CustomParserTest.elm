@@ -81,7 +81,7 @@ arithmeticsParserTest =
         [ test "should parse the expression" <|
             \() ->
                 Expect.equal
-                    (Matched 14)
+                    (Matched (ArithmeticsParser.ANumber 14))
                     (Parser.parse ArithmeticsParser.init "2 * (3 + 4)")
         ]
 

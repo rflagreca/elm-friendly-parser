@@ -1,10 +1,15 @@
-module Samples.ArithmeticsParser exposing (init)
+module Samples.ArithmeticsParser exposing (..)
 
 import Parser exposing (..)
 
 import Regex
+import Dict
 
-type alias ReturnType = Float
+type ReturnType =
+     AString String
+   | AList (List ReturnType)
+   | ANumber Int
+   -- | Operator String
 
 -- Expression
 --   = head:Term tail:(_ ("+" / "-") _ Term)* {
@@ -50,7 +55,7 @@ rules =
                     )
                 ]
             )
-        (\_ _ -> Fail)
+        expressionAction
       )
     , ( "Term"
       , action
@@ -68,7 +73,7 @@ rules =
                     )
                 ]
             )
-        (\_ _ -> Fail)
+        termAction
       )
     , ( "Factor"
       , choice
@@ -79,13 +84,13 @@ rules =
                     , label "expr" (call "Expression")
                     ]
                 )
-                (\_ _ -> Fail)
+                extractExpressionAction
             , call "Integer"
             ]
       )
     , ( "Integer"
       , action ( some (re "[0-9]") )
-        (\_ _ -> Fail)
+        integerAction
       )
     , ( "whitespace"
       , any (re "[ \t\n\r]")
@@ -100,8 +105,61 @@ init =
 
 adapter : InputType ReturnType -> ReturnType
 adapter input =
-    42.0
-    -- case input of
-    --     User.AValue str -> String.length str
-    --     User.AList list -> List.length list
-    --     User.ARule name value -> String.length name
+    case input of
+        Parser.AValue str -> AString str
+        Parser.AList list -> AList list
+        Parser.ARule name value -> value
+
+digitsToInt : List ReturnType -> Maybe Int
+digitsToInt probablyDigits =
+    let
+        collapse =
+            (\val prev ->
+                case prev of
+                    Just prevDigits ->
+                        case val of
+                            AString a ->
+                                Just (prevDigits ++ a)
+                            _ -> Nothing
+                    Nothing -> Nothing)
+    in
+        case List.foldl collapse (Just "") probablyDigits of
+            Just digitsString -> String.toInt digitsString |> Result.toMaybe
+            Nothing -> Nothing
+
+integerAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+integerAction source _ =
+    case source of
+        AList maybeDigits ->
+            case digitsToInt maybeDigits of
+                Just value -> Pass (ANumber value)
+                Nothing -> Fail
+        _ -> Fail
+
+expressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+expressionAction _ state =
+    let
+        maybeHead = (Dict.get "head" state.values)
+        maybeTail = (Dict.get "tail" state.values)
+        reducer = (\result element -> Pass result)
+    in
+        case ( maybeHead, maybeTail ) of
+            ( Just head, Just tail ) -> Pass head
+            -- ( Just head, Just tail ) -> List.foldl reducer (Pass head) tail
+            _ -> Fail
+
+termAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+termAction _ state =
+    let
+        maybeHead = (Dict.get "head" state.values)
+        maybeTail = (Dict.get "tail" state.values)
+    in
+        case ( maybeHead, maybeTail ) of
+            ( Just head, Just tail ) -> Pass head
+            _ -> Fail
+
+extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+extractExpressionAction _ state =
+    case (Dict.get "expr" state.values) of
+        Just val -> Pass val
+        Nothing -> Fail
