@@ -227,6 +227,11 @@ testAnyMatching =
                 "fff"
                 [ "f", "f", "f" ]
                 (BasicParser.start <| any (match "f"))
+        , test "matches empty list when there were no matches" <|
+            expectToParseNested
+                ""
+                [ ]
+                (BasicParser.start <| any (match "f"))
         , test "still matches when sample is not exits" <|
             expectToParseNested
                 "bar"

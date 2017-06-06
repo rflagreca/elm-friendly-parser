@@ -356,7 +356,7 @@ execAny op ctx =
     in
         case someResult of
             ( Matched _, _ ) -> someResult
-            ( Failed _, _ ) -> ctx |> matched ""
+            ( Failed _, _ ) -> ctx |> matchedList []
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
