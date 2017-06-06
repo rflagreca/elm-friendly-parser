@@ -111,6 +111,7 @@ testBasicMatching =
                 "for"
                 ( Failed (ByExpectation (ExpectedValue "foo", GotValue "f") ) ) -- GotValue "for"
                 (BasicParser.start <| (match "foo"))
+        -- FIXME: test fails if not the whole input matched
         ]
 
 testChoiceMatching : Test
@@ -231,6 +232,11 @@ testAnyMatching =
                 "bar"
                 [ "", "bar" ]
                 (BasicParser.start <| seqnc [ any (match "f"), match "bar" ])
+        , test "properly advances the position" <|
+            expectToParse
+                "ffff"
+                "4"
+                (BasicParser.start <| getPositionAfter ( any (match "f") ))
         ]
 
 testSomeMatching : Test

@@ -2,7 +2,6 @@ module Samples.ArithmeticsParser exposing (..)
 
 import Parser exposing (..)
 
-import Regex
 import Dict
 
 type ReturnType =
@@ -82,6 +81,8 @@ rules =
                     [ match "("
                     , call "whitespace"
                     , label "expr" (call "Expression")
+                    , call "whitespace"
+                    , match ")"
                     ]
                 )
                 extractExpressionAction
@@ -144,8 +145,11 @@ expressionAction _ state =
         reducer = (\result element -> Pass result)
     in
         case ( maybeHead, maybeTail ) of
-            ( Just head, Just tail ) -> Pass head
-            -- ( Just head, Just tail ) -> List.foldl reducer (Pass head) tail
+            ( Just head, Just tail ) ->
+                case ( head, tail ) of
+                    ( ANumber headNum, AList tailList ) ->
+                        Pass (ANumber (List.foldl (\triplet sum -> sum) headNum tailList))
+                    _ -> Fail
             _ -> Fail
 
 termAction : ReturnType -> State ReturnType -> ActionResult ReturnType
@@ -155,7 +159,11 @@ termAction _ state =
         maybeTail = (Dict.get "tail" state.values)
     in
         case ( maybeHead, maybeTail ) of
-            ( Just head, Just tail ) -> Pass head
+            ( Just head, Just tail ) ->
+                case ( head, tail ) of
+                    ( ANumber headNum, AList tailList ) ->
+                        Pass (ANumber (List.foldl (\triplet sum -> sum) headNum tailList))
+                    _ -> Fail
             _ -> Fail
 
 extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
