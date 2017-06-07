@@ -7,7 +7,7 @@ import Dict
 type ReturnType =
      AString String
    | AList (List ReturnType)
-   | ANumber Int
+   | ANumber Float
    -- | Operator String
 
 -- Expression
@@ -90,7 +90,7 @@ rules =
             ]
       )
     , ( "Integer"
-      , action ( some (re "[0-9]") )
+      , action ( any (re "[0-9]") )
         integerAction
       )
     , ( "whitespace"
@@ -111,7 +111,7 @@ adapter input =
         Parser.AList list -> AList list
         Parser.ARule name value -> value
 
-digitsToInt : List ReturnType -> Maybe Int
+digitsToInt : List ReturnType -> Maybe Float
 digitsToInt probablyDigits =
     let
         collapse =
@@ -125,7 +125,7 @@ digitsToInt probablyDigits =
                     Nothing -> Nothing)
     in
         case List.foldl collapse (Just "") probablyDigits of
-            Just digitsString -> String.toInt digitsString |> Result.toMaybe
+            Just digitsString -> String.toFloat digitsString |> Result.toMaybe
             Nothing -> Nothing
 
 integerAction : ReturnType -> State ReturnType -> ActionResult ReturnType
@@ -133,7 +133,7 @@ integerAction source _ =
     case source of
         AList maybeDigits ->
             case digitsToInt maybeDigits of
-                Just value -> Pass (ANumber value)
+                Just value -> Pass (ANumber (Debug.log "Integer" value))
                 Nothing -> Fail
         _ -> Fail
 
@@ -142,13 +142,13 @@ expressionAction _ state =
     let
         maybeHead = (Dict.get "head" state.values)
         maybeTail = (Dict.get "tail" state.values)
-        reducer = (\result element -> Pass result)
+        reducer = reduceAdditionAndSubtraction
     in
-        case ( maybeHead, maybeTail ) of
+        case Debug.log "Expression: (maybeHead, maybeTail)" ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
-                case ( head, tail ) of
+                case Debug.log "Expression: (head, tail)" ( head, tail ) of
                     ( ANumber headNum, AList tailList ) ->
-                        Pass (ANumber (List.foldl (\triplet sum -> sum) headNum tailList))
+                        Pass (Debug.log "Expression: Foldld" (ANumber (List.foldl reducer headNum tailList)))
                     _ -> Fail
             _ -> Fail
 
@@ -157,17 +157,38 @@ termAction _ state =
     let
         maybeHead = (Dict.get "head" state.values)
         maybeTail = (Dict.get "tail" state.values)
+        reducer = reduceMultiplicationAndDivision
     in
-        case ( maybeHead, maybeTail ) of
+        case Debug.log "Term: (maybeHead, maybeTail)" ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
-                case ( head, tail ) of
+                case Debug.log "Term: (head, tail)" ( head, tail ) of
                     ( ANumber headNum, AList tailList ) ->
-                        Pass (ANumber (List.foldl (\triplet sum -> sum) headNum tailList))
+                        Pass (Debug.log "Term: Foldld" (ANumber (List.foldl reducer headNum tailList)))
                     _ -> Fail
             _ -> Fail
 
 extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
 extractExpressionAction _ state =
-    case (Dict.get "expr" state.values) of
+    case Debug.log "expr" (Dict.get "expr" state.values) of
         Just val -> Pass val
         Nothing -> Fail
+
+reduceAdditionAndSubtraction : ReturnType -> Float -> Float
+reduceAdditionAndSubtraction triplet sum =
+    case triplet of
+        (AList (_::AString op::_::ANumber v::_) ) ->
+            case (Debug.log "AS: op" op) of
+                "+" -> (Debug.log "sum" sum) + (Debug.log "v" v)
+                "-" -> (Debug.log "sum" sum) - (Debug.log "v" v)
+                _ -> -1
+        _ -> -1
+
+reduceMultiplicationAndDivision : ReturnType -> Float -> Float
+reduceMultiplicationAndDivision triplet sum =
+    case triplet of
+        (AList (_::AString op::_::ANumber v::_) ) ->
+            case (Debug.log "MD: op" op) of
+                "*" -> (Debug.log "sum" sum) * (Debug.log "v" v)
+                "/" -> (Debug.log "sum" sum) / (Debug.log "v" v)
+                _ -> -1
+        _ -> -1

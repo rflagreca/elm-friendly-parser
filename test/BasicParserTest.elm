@@ -466,6 +466,7 @@ testREMatching =
 
 -- TODO: Test position advances properly for all operators
 -- TODO: Failures should contain either index in the input or (better!) both line/column positions
+-- TODO: Values dictionary should respect going deeper, i.e. closures
 
 -- UTILS
 
