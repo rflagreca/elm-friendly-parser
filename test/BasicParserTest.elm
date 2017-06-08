@@ -111,7 +111,7 @@ testBasicMatching =
                 "for"
                 ( Failed (ByExpectation (ExpectedValue "foo", GotValue "f") ) ) -- GotValue "for"
                 (BasicParser.start <| (match "foo"))
-        -- FIXME: test fails if not the whole input matched
+        -- FIXME: test fails when not the whole input matched
         ]
 
 testChoiceMatching : Test
@@ -425,17 +425,49 @@ testLabelMatching =
                     seqnc
                         [ label "xyz" (match "foo")
                         , match "bar"
-                        , action (match "x")
-                                 (\val state ->
-                                    case Dict.get "xyz" state.values of
-                                        Just val -> Pass val
-                                        Nothing -> Fail)
+                        , getLabelValueOrFail "xyz" (match "x")
                         ])
         , test "still fails when match failed" <|
             expectToFailToParse
                 "foo"
                 (BasicParser.start <|
                     label "xyz" (match "for"))
+        , test "labels keep the context level when executed in a sequence call" <|
+            expectToParseWith
+                "fooxbarxz"
+                (Matched
+                    (RList
+                        ([ RString "foo"
+                         , RString "foo"
+                         , RList ([ RString "bar", RString "bar" ])
+                         , RString "foo"
+                         ])))
+                (BasicParser.start <|
+                    seqnc
+                        [ label "a" (match "foo")
+                        , getLabelValueOrFail "a" (match "x")
+                        , seqnc
+                            [ label "a" (match "bar")
+                            , getLabelValueOrFail "a" (match "x")
+                            ]
+                        , getLabelValueOrFail "a" (match "z")
+                        ])
+        -- FIXME: test the same for executing nested calls!
+        , test "labels keep the context level when executed during choice call" <|
+            expectToParse
+                "fooxbarxz"
+                "foofoobarbarfoo"
+                (BasicParser.start <|
+                    seqnc
+                        [ label "a" (match "foo")
+                        , getLabelValueOrFail "a" (match "x")
+                        , choice
+                            [ label "a" (match "zoo")
+                            , failIfLabelHasValue "a" "fail" (match "x")
+                            , match "x"
+                            ]
+                        , getLabelValueOrFail "a" (match "z")
+                        ])
         ]
 
 testREMatching : Test
@@ -480,34 +512,37 @@ nestedFailureOf strings sample =
             strings
         , sample))
 
-expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
-expectToParse input output parser =
+expectToParseWith : String -> BasicParser.ParseResult -> BasicParser -> (() -> Expect.Expectation)
+expectToParseWith input result parser =
     \() ->
         Expect.equal
-            (Matched (BasicParser.RString output))
+            result
             (Parser.parse parser input)
+
+expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
+expectToParse input output parser =
+    parser |> expectToParseWith
+        input
+        (Matched (BasicParser.RString output))
 
 expectToParseAsRule : String -> String -> String -> BasicParser -> (() -> Expect.Expectation)
 expectToParseAsRule input output ruleName parser =
-    \() ->
-        Expect.equal
-            (Matched (BasicParser.RRule ruleName (BasicParser.RString output)))
-            (Parser.parse parser input)
+    parser |> expectToParseWith
+        input
+        (Matched (BasicParser.RRule ruleName (BasicParser.RString output)))
 
 expectToMatchWith : String -> BasicParser.ReturnType -> BasicParser -> (() -> Expect.Expectation)
 expectToMatchWith input value parser =
-    \() ->
-        Expect.equal
-            (Matched value)
-            (Parser.parse parser input)
+    parser |> expectToParseWith
+        input
+        (Matched value)
 
 expectToParseNested : String -> List String -> BasicParser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
-    \() ->
-        Expect.equal
-            (Matched (BasicParser.RList
+    parser |> expectToParseWith
+        input
+        (Matched (BasicParser.RList
                 (chunks |> List.map (\chunk -> RString chunk))))
-            (Parser.parse parser input)
 
 expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)
 expectToFailToParse input parser =
@@ -532,3 +567,19 @@ expectToFailToParseWith input output parser =
 getPositionAfter : BasicParser.Operator -> BasicParser.Operator
 getPositionAfter op =
     action op (\_ state -> Pass (BasicParser.RString (toString state.position)))
+
+getLabelValueOrFail : String -> BasicParser.Operator -> BasicParser.Operator
+getLabelValueOrFail label op =
+    action op
+        (\val state ->
+            case Dict.get label state.values of
+                Just val -> Pass val
+                Nothing -> Fail)
+
+failIfLabelHasValue : String -> String -> BasicParser.Operator -> BasicParser.Operator
+failIfLabelHasValue label successVal op =
+    action op
+        (\val state ->
+            case Dict.get label state.values of
+                Just _ -> Fail
+                Nothing -> Pass (BasicParser.RString successVal))
