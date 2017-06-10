@@ -22,7 +22,7 @@ operator op =
         Sequence ops -> "(" ++ String.join " " (List.map operator ops) ++ ")"
         Choice ops -> "(" ++ String.join " / " (List.map rootOperator ops) ++ ")"
         Label label op -> label ++ ":" ++ (operator op)
-        Action op _ -> (rootOperator op) ++ " { <CODE> }" -- FIXME: implement converting code
+        Action op _ -> (rootOperator op) ++ " { <CODE> }" -- FIXME: implement converting code?
         Call name -> name
         Regex re _ -> toString re
         _ -> "TODO"
