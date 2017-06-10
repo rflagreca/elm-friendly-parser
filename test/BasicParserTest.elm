@@ -1,7 +1,6 @@
 module BasicParserTest exposing (suite)
 
 import Dict
-import Regex
 
 import Test exposing (..)
 import Expect
@@ -106,6 +105,11 @@ testBasicMatching =
             expectToFailToParse
                 "ab"
                 (BasicParser.start <| (match "abc"))
+        , test "fails when input end wasn't reached" <|
+            expectToFailToParseWith
+                "abc"
+                ( Failed (ByExpectation (ExpectedEndOfInput, GotValue "c") ) )
+                (BasicParser.start <| (match "ab"))
         , test "reports the failed match properly" <|
             expectToFailToParseWith
                 "for"
@@ -190,8 +194,8 @@ testMaybeMatching =
         , test "matches when sample not exists, p. II" <|
             expectToParseNested
                 "foo"
-                [ "f", "o", "" ]
-                (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "p") ])
+                [ "f", "o", "", "o" ]
+                (BasicParser.start <| seqnc [ match "f", match "o", maybe (match "p"), match "o" ])
         ]
 
 testTextMatching : Test
@@ -287,15 +291,15 @@ testAndMatching : Test
 testAndMatching =
     describe "`and` matching"
         [ test "matches when sample exists" <|
-            expectToParse
-                "foo"
-                ""
-                (BasicParser.start <| and (match "foo"))
+            expectToParseNested
+                "foobar"
+                [ "", "foobar" ]
+                (BasicParser.start <| seqnc [ Parser.and (match "foo"), match "foobar" ])
         , test "fails when sample not exists" <|
             expectToFailToParseWith
-                "bar"
+                "barfoo"
                 ( Failed (ByExpectation ( ExpectedValue "foo", GotValue "b" ) ) )
-                (BasicParser.start <| and (match "foo"))
+                (BasicParser.start <| seqnc [ Parser.and (match "foo"), match "barfoo" ])
         ]
 
 testNotMatching : Test
@@ -303,14 +307,14 @@ testNotMatching =
     describe "`not` matching"
         [ test "fails when sample exists" <|
             expectToFailToParseWith
-                "foo"
-                ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "" ) ) )
-                (BasicParser.start <| Parser.not (match "foo"))
+                "foobar"
+                ( Failed (ByExpectation ( ExpectedEndOfInput, GotValue "f" ) ) )
+                (BasicParser.start <| seqnc [ Parser.not (match "foo"), match "foobar" ])
         , test "matches when sample not exists" <|
-            expectToParse
-                "bar"
-                ""
-                (BasicParser.start <| Parser.not (match "foo"))
+            expectToParseNested
+                "barfoo"
+                [ "", "barfoo" ]
+                (BasicParser.start <| seqnc [ Parser.not (match "foo"), match "barfoo" ])
         ]
 
 testActionMatching : Test

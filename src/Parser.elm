@@ -58,7 +58,18 @@ parse parser input =
         case getStartRule parser of
             Just startOperator ->
                 -- TODO: extractParseResult (execCall parser.startRule context)
-                extractParseResult (execute startOperator context)
+                let
+                    ( parseResult, lastCtx ) = (execute startOperator context)
+                    ( _, lastState ) = lastCtx
+                in
+                    case parseResult of
+                        Matched success ->
+                            if lastState.position == (String.length input) then
+                                parseResult
+                            else
+                                Failed (ByExpectation
+                                    (ExpectedEndOfInput, (GotValue (getCurrentChar lastCtx))))
+                        Failed _ -> parseResult
             Nothing -> Failed NoStartRule
 
 noRules : Rules o
@@ -400,7 +411,7 @@ execNot op ctx =
         ( result, newCtx ) = (execute op ctx)
     in
         case result of
-            Matched _ -> newCtx |> failedCC ExpectedEndOfInput
+            Matched _ -> ctx |> failedCC ExpectedEndOfInput
             failure -> matched "" ctx
 
 execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
