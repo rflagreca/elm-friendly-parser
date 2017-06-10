@@ -233,9 +233,9 @@ testAnyMatching =
                 [ ]
                 (BasicParser.start <| any (match "f"))
         , test "still matches when sample is not exits" <|
-            expectToParseNested
+            expectToParseWith
                 "bar"
-                [ "", "bar" ]
+                (Matched (RList ([RList [], RString "bar"])))
                 (BasicParser.start <| seqnc [ any (match "f"), match "bar" ])
         , test "properly advances the position" <|
             expectToParse
