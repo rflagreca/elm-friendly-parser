@@ -432,6 +432,23 @@ testLabelMatching =
                 "foo"
                 (BasicParser.start <|
                     label "xyz" (match "for"))
+
+        , test "labels keep the context level when executed in the action call" <|
+            expectToParseNested
+                "foobarxz"
+                [ "foo", "bar", "foo" ]
+                (BasicParser.start <|
+                    seqnc
+                        [ label "a" (match "foo")
+                        , getLabelValueOrFail "a"
+                            ( seqnc
+                                [ label "a" (match "bar")
+                                , getLabelValueOrFail "a" (match "x")
+                                ]
+                            )
+                        , getLabelValueOrFail "a" (match "z")
+                        ])
+        {--
         , test "labels keep the context level when executed in a sequence call" <|
             expectToParseWith
                 "fooxbarxz"
@@ -452,7 +469,9 @@ testLabelMatching =
                             ]
                         , getLabelValueOrFail "a" (match "z")
                         ])
+        --}
         -- FIXME: test the same for executing nested calls!
+        {--
         , test "labels keep the context level when executed during choice call" <|
             expectToParse
                 "fooxbarxz"
@@ -468,6 +487,7 @@ testLabelMatching =
                             ]
                         , getLabelValueOrFail "a" (match "z")
                         ])
+        --}
         ]
 
 testREMatching : Test

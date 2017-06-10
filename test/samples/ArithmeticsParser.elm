@@ -133,7 +133,7 @@ integerAction source _ =
     case source of
         AList maybeDigits ->
             case digitsToInt maybeDigits of
-                Just value -> Pass (ANumber (Debug.log "Integer" value))
+                Just value -> Pass (ANumber value)
                 Nothing -> Fail
         _ -> Fail
 
@@ -144,11 +144,11 @@ expressionAction _ state =
         maybeTail = (Dict.get "tail" state.values)
         reducer = reduceAdditionAndSubtraction
     in
-        case Debug.log "Expression: (maybeHead, maybeTail)" ( maybeHead, maybeTail ) of
+        case ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
-                case Debug.log "Expression: (head, tail)" ( head, tail ) of
+                case ( head, tail ) of
                     ( ANumber headNum, AList tailList ) ->
-                        Pass (Debug.log "Expression: Foldld" (ANumber (List.foldl reducer headNum tailList)))
+                        Pass (ANumber (List.foldl reducer headNum tailList))
                     _ -> Fail
             _ -> Fail
 
@@ -159,17 +159,17 @@ termAction _ state =
         maybeTail = (Dict.get "tail" state.values)
         reducer = reduceMultiplicationAndDivision
     in
-        case Debug.log "Term: (maybeHead, maybeTail)" ( maybeHead, maybeTail ) of
+        case ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
-                case Debug.log "Term: (head, tail)" ( head, tail ) of
+                case ( head, tail ) of
                     ( ANumber headNum, AList tailList ) ->
-                        Pass (Debug.log "Term: Foldld" (ANumber (List.foldl reducer headNum tailList)))
+                        Pass (ANumber (List.foldl reducer headNum tailList))
                     _ -> Fail
             _ -> Fail
 
 extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
 extractExpressionAction _ state =
-    case Debug.log "expr" (Dict.get "expr" state.values) of
+    case Dict.get "expr" state.values of
         Just val -> Pass val
         Nothing -> Fail
 
@@ -177,9 +177,9 @@ reduceAdditionAndSubtraction : ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =
     case triplet of
         (AList (_::AString op::_::ANumber v::_) ) ->
-            case (Debug.log "AS: op" op) of
-                "+" -> (Debug.log "sum" sum) + (Debug.log "v" v)
-                "-" -> (Debug.log "sum" sum) - (Debug.log "v" v)
+            case op of
+                "+" -> sum + v
+                "-" -> sum - v
                 _ -> -1
         _ -> -1
 
@@ -187,8 +187,8 @@ reduceMultiplicationAndDivision : ReturnType -> Float -> Float
 reduceMultiplicationAndDivision triplet sum =
     case triplet of
         (AList (_::AString op::_::ANumber v::_) ) ->
-            case (Debug.log "MD: op" op) of
-                "*" -> (Debug.log "sum" sum) * (Debug.log "v" v)
-                "/" -> (Debug.log "sum" sum) / (Debug.log "v" v)
+            case op of
+                "*" -> sum * v
+                "/" -> sum / v
                 _ -> -1
         _ -> -1

@@ -298,6 +298,7 @@ execSequence ops ctx =
             in
                 case applied of
                     ( _, Nothing, matches, lastCtx ) -> lastCtx |> matchedList matches
+                        -- ctx |> loadPosition lastCtx |> matchedList matches
                     ( _, Just reason, failures, _ ) -> ctx |> failed reason
 
 execChoice : List (Operator o) -> Context o -> OperatorResult o
@@ -325,6 +326,7 @@ execChoice ops ctx =
             in
                 case applied of
                     ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matchedWith success
+                        -- ctx |> loadPosition lastCtx |> matchedWith success
                     ( _, Nothing, failures ) -> ctx |> failedNestedCC failures
 
 execSome : Operator o -> Context o -> OperatorResult o
@@ -406,14 +408,16 @@ execAction op userCode ctx =
     let
         ( result, newCtx ) = (execute op ctx)
         ( _, newState ) = newCtx
+         -- we forget all the data left inside the "closure" and take only the new position
+        resultingCtx = ctx |> loadPosition newCtx
     in
         case result of
             Matched v ->
                 case (userCode v newState) of
-                    Pass userV -> newCtx |> matchedWith userV
-                    PassThrough -> newCtx |> matchedWith v
-                    Fail -> newCtx |> failedCC ExpectedAnything
-            Failed _ -> ( result, newCtx )
+                    Pass userV -> resultingCtx |> matchedWith userV
+                    PassThrough -> resultingCtx |> matchedWith v
+                    Fail -> resultingCtx |> failedCC ExpectedAnything
+            Failed _ -> ( result, resultingCtx )
 
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
@@ -661,5 +665,9 @@ concat resultOne resultTwo inContext =
         ( Matched vOne, Matched vTwo ) ->
             matchedList [ vOne, vTwo ] inContext
         _ -> ( resultTwo, inContext )
+
+loadPosition : Context o -> Context o -> Context o
+loadPosition ( _, loadFrom ) ( parser, addTo ) =
+    ( parser, { addTo | position = loadFrom.position } )
 
 
