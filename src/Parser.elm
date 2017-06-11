@@ -67,10 +67,10 @@ parse parser input =
                             if lastState.position == (String.length input) then
                                 parseResult
                             else
-                                Failed (ByExpectation
+                                Failed (findPosition lastCtx) (ByExpectation
                                     (ExpectedEndOfInput, (GotValue (getCurrentChar lastCtx))))
-                        Failed _ -> parseResult
-            Nothing -> Failed NoStartRule
+                        Failed _ _ -> parseResult
+            Nothing -> Failed (0, 0) NoStartRule
 
 noRules : Rules o
 noRules = Dict.empty
@@ -159,9 +159,11 @@ type FailureReason o =
     | NoStartRule
     | SomethingWasNotImplemented
 
+type alias Position = ( Int, Int )
+
 type ParseResult o =
       Matched o
-    | Failed (FailureReason o)
+    | Failed Position (FailureReason o)
 
 -- OPERATORS
 
@@ -302,7 +304,7 @@ execSequence ops ctx =
                                     StopWith ( [], Nothing, matches ++ [ v ], lastCtx )
                                 ( Matched v, nextOp::restOps ) ->
                                     Next ( nextOp, ( restOps, Nothing, matches ++ [ v ], lastCtx ) )
-                                ( Failed failure, _ ) ->
+                                ( Failed _ failure, _ ) ->
                                     StopWith ( [], Just failure, matches, lastCtx )
                     )
                     firstOp ( restOps, Nothing, [], ctx ) ctx
@@ -326,11 +328,11 @@ execChoice ops ctx =
                             case ( prevResult, opsLeft ) of
                                 ( Matched v, _ ) ->
                                     StopWith ( [], Just (v, lastCtx), failures )
-                                ( Failed failure, [] ) ->
+                                ( Failed _ failure, [] ) ->
                                     case maybeMatched of
                                         Just v -> StopWith ( [], maybeMatched, failures )
                                         Nothing -> StopWith ( [], Nothing, failures ++ [ prevResult ] )
-                                ( Failed failure, nextOp::restOps ) ->
+                                ( Failed _ failure, nextOp::restOps ) ->
                                     Next ( nextOp, ( restOps, Nothing, failures ++ [ prevResult ] ) )
                     )
                     firstOp ( restOps, Nothing, [] ) ctx
@@ -350,7 +352,7 @@ execSome op ctx =
                             case reducedVal of
                                 ( prevMatches, _, _ ) ->
                                     Next ( op, ( prevMatches ++ [ v ], Just lastCtx, Nothing ) )
-                          Failed f ->
+                          Failed _ f ->
                             case reducedVal of
                                 ( [], _, _ ) -> StopWith ( [], Nothing, Just f )
                                 _ -> Stop
@@ -369,7 +371,7 @@ execAny op ctx =
     in
         case someResult of
             ( Matched _, _ ) -> someResult
-            ( Failed _, _ ) -> ctx |> matchedList []
+            ( Failed _ _, _ ) -> ctx |> matchedList []
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -378,7 +380,7 @@ execMaybe op ctx =
     in
         case result of
             ( Matched s, newCtx ) -> matchedWith s newCtx
-            ( Failed _, _ ) -> matched "" ctx
+            ( Failed _ _, _ ) -> matched "" ctx
 
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
@@ -428,7 +430,7 @@ execAction op userCode ctx =
                     Pass userV -> resultingCtx |> matchedWith userV
                     PassThrough -> resultingCtx |> matchedWith v
                     Fail -> resultingCtx |> failedCC ExpectedAnything
-            Failed _ -> ( result, resultingCtx )
+            Failed _ _ -> ( result, resultingCtx )
 
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
@@ -463,7 +465,7 @@ execLabel name op ctx =
                             { newState | values = newState.values |> Dict.insert name v }
                     in
                         ( parser, updatedState )
-                Failed _ -> newCtx
+                Failed _ _ -> newCtx
     in
         ( result, updatedCtx )
 
@@ -542,13 +544,13 @@ isNotParsed : ParseResult o -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
-        Failed _ -> True
+        Failed _ _ -> True
 
 isParsedAs : String -> ParseResult o -> Bool
 isParsedAs subject result =
     case result of
         Matched s -> (toString s == subject)
-        Failed _-> False
+        Failed _ _-> False
 
 advanceBy : Int -> Context o -> Context o
 advanceBy count ctx =
@@ -617,7 +619,7 @@ matchedRule ruleName value ctx =
 
 failed : FailureReason o -> Context o -> OperatorResult o
 failed reason ctx =
-    ( Failed reason, ctx )
+    ( Failed (findPosition ctx) reason, ctx )
 
 failedBy : Expectation -> Sample -> Context o -> OperatorResult o
 failedBy expectation sample ctx =
@@ -652,7 +654,7 @@ addRuleToResult : RuleName -> OperatorResult o -> OperatorResult o
 addRuleToResult ruleName ( result, ctx ) =
     case result of
         Matched v -> ctx |> matchedRule ruleName v
-        Failed failure -> ( Failed (FollowingRule ruleName failure), ctx )
+        Failed pos failure -> ( Failed pos (FollowingRule ruleName failure), ctx )
 
 opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
 opResultToMaybe ( parseResult, ctx ) =
@@ -662,13 +664,13 @@ parseResultToMaybe : ParseResult o -> Maybe o
 parseResultToMaybe result =
     case result of
         Matched v -> Just v
-        Failed _ -> Nothing
+        Failed _ _ -> Nothing
 
-parseResultToResult : ParseResult o -> Result (FailureReason o) o
+parseResultToResult : ParseResult o -> Result (Position, FailureReason o) o
 parseResultToResult result =
     case result of
         Matched v -> Ok v
-        Failed f -> Err f
+        Failed pos f -> Err (pos, f)
 
 concat : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
 concat resultOne resultTwo inContext =
@@ -680,5 +682,9 @@ concat resultOne resultTwo inContext =
 loadPosition : Context o -> Context o -> Context o
 loadPosition ( _, loadFrom ) ( parser, addTo ) =
     ( parser, { addTo | position = loadFrom.position } )
+
+findPosition : Context o -> Position
+findPosition ctx =
+    ( 0, 0 )
 
 

@@ -520,6 +520,16 @@ testREMatching =
                 (BasicParser.start <| redesc "f?oo" "foo regex")
         ]
 
+testFailingWithPosition : Test
+testFailingWithPosition =
+    describe "reporting position on failure"
+        [ test "failure contains the position in the input" <|
+            expectToFailToParseWith
+                "foo"
+                (Failed (0, 3) (ByExpectation (ExpectedValue "x", GotValue "o")))
+                (BasicParser.start <| seqnc [ match "fo", match "x" ])
+        ]
+
 -- TODO: Test position advances properly for all operators
 -- TODO: Failures should contain either index in the input or (better!) both line/column positions
 -- TODO: Values dictionary should respect going deeper, i.e. closures
