@@ -687,6 +687,22 @@ loadPosition ( _, loadFrom ) ( parser, addTo ) =
 
 findPosition : State o -> Position
 findPosition state =
-    ( 0, 0 )
+    let
+        input = state.input
+        curPosition = state.position
+    in
+        Tuple.first
+            (List.foldl
+                (\line (pos, sum) ->
+                    if (sum >= curPosition) then ( pos, sum )
+                    else
+                        case pos of
+                            ( lineIndex, charIndex ) ->
+                                if (sum + String.length line) >= curPosition then
+                                    (( lineIndex, curPosition - sum ), sum + String.length line )
+                                else
+                                    (( lineIndex + 1, 0 ), sum + String.length line))
+                ((0, 0), 0)
+                (String.lines input))
 
 
