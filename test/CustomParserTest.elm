@@ -1,13 +1,14 @@
 module CustomParserTest exposing (suite)
 
 import Test exposing (..)
-import Expect
 
 import Parser exposing (..)
 
 import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
 import Samples.PhoneNumberParser as PhoneNumberParser exposing (..)
 import Samples.TypedPhoneNumberParser as TypedPhoneNumberParser exposing (..)
+
+import Utils exposing (..)
 
 suite : Test
 suite =
@@ -39,38 +40,26 @@ customParserTest : Test
 customParserTest =
     describe "very custom friendly parser"
         [ test "should use custom adapter to adapt matching values" <|
-            \() ->
-                let
-                    myParser = start <| (match "abc")
-                in
-                    Expect.equal
-                        (Matched 3)
-                        (Parser.parse myParser "abc")
+            expectToMatchWith
+                "abc"
+                3
+                (start <| (match "abc"))
         , test "should use custom adapter to adapt matching values, p.2" <|
-            \() ->
-                let
-                    myParser = start <|
-                        (seqnc [ match "a", match "b", match "c", match "d" ])
-                in
-                    Expect.equal
-                        (Matched 4)
-                        (Parser.parse myParser "abcd")
+            expectToMatchWith
+                "abcd"
+                4
+                (start <|
+                    (seqnc [ match "a", match "b", match "c", match "d" ]))
         , test "still should fail if parsing fails" <|
-            \() ->
-                let
-                    myParser = start <| (match "abc")
-                in
-                    Expect.equal
-                        (Failed (ByExpectation (ExpectedValue "abc", GotValue "a")))
-                        (Parser.parse myParser "abz")
+            expectToFailToParseWith
+                "abz"
+                (Failed (ByExpectation (ExpectedValue "abc", GotValue "a")))
+                (start <| (match "abc"))
         , test "should replace value with the one returned from action code" <|
-            \() ->
-                let
-                    myParser = start <| (action (match "abc") (\_ _ -> Pass 42))
-                in
-                    Expect.equal
-                        (Matched 42)
-                        (Parser.parse myParser "abc")
+            expectToMatchWith
+                "abc"
+                42
+                (start <| (action (match "abc") (\_ _ -> Pass 42)))
         ]
 
 -- TEST OTHER SAMPLE PARSERS
@@ -79,33 +68,34 @@ arithmeticsParserTest : Test
 arithmeticsParserTest =
     describe "arithmetics friendly parser"
         [ test "should parse the expression" <|
-            \() ->
-                Expect.equal
-                    (Matched (ArithmeticsParser.ANumber 14))
-                    (Parser.parse ArithmeticsParser.init "2 * (3 + 4)")
+            (ArithmeticsParser.init |>
+                expectToMatchWith
+                    "2 * (3 + 4)"
+                    (ArithmeticsParser.ANumber 14))
         ]
 
 phoneNumberParserTest : Test
 phoneNumberParserTest =
     describe "phone number friendly parser"
         [ test "should parse the phone number" <|
-            \() ->
-                Expect.equal
-                    (Matched "prefix:+35;operator:[057];local:776-22-13;")
-                    (Parser.parse PhoneNumberParser.init "+35[057]776-22-13")
+            (PhoneNumberParser.init |>
+                expectToMatchWith
+                    "+35[057]776-22-13"
+                    "prefix:+35;operator:[057];local:776-22-13;")
         ]
 
 typedPhoneNumberParserTest : Test
 typedPhoneNumberParserTest =
     describe "phone number friendly parser"
         [ test "should parse the phone number" <|
-            \() ->
-                Expect.equal
-                    (Matched (TypedPhoneNumberParser.PhoneNumber
+            (TypedPhoneNumberParser.init |>
+                expectToMatchWith
+                    "+35[057]776-22-13"
+                    (TypedPhoneNumberParser.PhoneNumber
                         { prefix = ("+", 35)
                         , operator = 057
                         , local = (776, 22, 13)
                         }
-                    ))
-                    (Parser.parse TypedPhoneNumberParser.init "+35[057]776-22-13")
+                    )
+            )
         ]

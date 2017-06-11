@@ -8,6 +8,8 @@ import Expect
 import Parser exposing (..)
 import BasicParser.Parser as BasicParser exposing (..)
 
+import Utils exposing (..)
+
 suite : Test
 suite =
     describe "basic friendly parser"
@@ -27,6 +29,7 @@ suite =
         , testNegPreMatching
         , testLabelMatching
         , testREMatching
+        , testReportingPosition
         ]
 
 testStartRule : Test
@@ -452,46 +455,6 @@ testLabelMatching =
                             )
                         , getLabelValueOrFail "a" (match "z")
                         ])
-        {--
-        , test "labels keep the context level when executed in a sequence call" <|
-            expectToParseWith
-                "fooxbarxz"
-                (Matched
-                    (RList
-                        ([ RString "foo"
-                         , RString "foo"
-                         , RList ([ RString "bar", RString "bar" ])
-                         , RString "foo"
-                         ])))
-                (BasicParser.start <|
-                    seqnc
-                        [ label "a" (match "foo")
-                        , getLabelValueOrFail "a" (match "x")
-                        , seqnc
-                            [ label "a" (match "bar")
-                            , getLabelValueOrFail "a" (match "x")
-                            ]
-                        , getLabelValueOrFail "a" (match "z")
-                        ])
-        --}
-        -- FIXME: test the same for executing nested calls!
-        {--
-        , test "labels keep the context level when executed during choice call" <|
-            expectToParse
-                "fooxbarxz"
-                "foofoobarbarfoo"
-                (BasicParser.start <|
-                    seqnc
-                        [ label "a" (match "foo")
-                        , getLabelValueOrFail "a" (match "x")
-                        , choice
-                            [ label "a" (match "zoo")
-                            , failIfLabelHasValue "a" "fail" (match "x")
-                            , match "x"
-                            ]
-                        , getLabelValueOrFail "a" (match "z")
-                        ])
-        --}
         ]
 
 testREMatching : Test
@@ -520,19 +483,28 @@ testREMatching =
                 (BasicParser.start <| redesc "f?oo" "foo regex")
         ]
 
-testFailingWithPosition : Test
-testFailingWithPosition =
-    describe "reporting position on failure"
-        [ test "failure contains the position in the input" <|
-            expectToFailToParseWith
-                "foo"
-                (Failed (0, 3) (ByExpectation (ExpectedValue "x", GotValue "o")))
-                (BasicParser.start <| seqnc [ match "fo", match "x" ])
+testReportingPosition : Test
+testReportingPosition =
+    describe "test reporting position"
+        [ test "no position is passed when match was successful" <|
+            ((BasicParser.start <| match "foo")
+                |> expectToGetResultOfParsing
+                    "foo"
+                    (Matched (BasicParser.RString "foo"), Nothing))
+        , test "properly reports position of the failure" <|
+            ((BasicParser.start <| seqnc [ match "fo", match "x" ])
+                |> expectToFailToParseAt
+                    "foo"
+                    (0, 2))
+        , test "properly reports position of the failure even for a multiline input" <|
+            ((BasicParser.start <| seqnc [ match "foo", re "[\n]", match "ba", match "x" ])
+                |> expectToFailToParseAt
+                    "foo\nbar"
+                    (1, 2))
         ]
 
 -- TODO: Test position advances properly for all operators
 -- TODO: Failures should contain either index in the input or (better!) both line/column positions
--- TODO: Values dictionary should respect going deeper, i.e. closures
 
 -- UTILS
 
@@ -546,13 +518,6 @@ nestedFailureOf strings sample =
             strings
         , sample))
 
-expectToParseWith : String -> BasicParser.ParseResult -> BasicParser -> (() -> Expect.Expectation)
-expectToParseWith input result parser =
-    \() ->
-        Expect.equal
-            result
-            (Parser.parse parser input)
-
 expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     parser |> expectToParseWith
@@ -565,38 +530,12 @@ expectToParseAsRule input output ruleName parser =
         input
         (Matched (BasicParser.RRule ruleName (BasicParser.RString output)))
 
-expectToMatchWith : String -> BasicParser.ReturnType -> BasicParser -> (() -> Expect.Expectation)
-expectToMatchWith input value parser =
-    parser |> expectToParseWith
-        input
-        (Matched value)
-
 expectToParseNested : String -> List String -> BasicParser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
     parser |> expectToParseWith
         input
         (Matched (BasicParser.RList
                 (chunks |> List.map (\chunk -> RString chunk))))
-
-expectToFailToParse : String -> BasicParser -> (() -> Expect.Expectation)
-expectToFailToParse input parser =
-    \() ->
-        let
-            result = (Parser.parse parser input)
-        in
-            Expect.true
-                ("Expected to fail to parse \"" ++ input ++ "\".")
-                (isNotParsed result)
-
-expectToFailToParseWith : String -> BasicParser.ParseResult -> BasicParser -> (() -> Expect.Expectation)
-expectToFailToParseWith input output parser =
-    \() ->
-        let
-            result = (Parser.parse parser input)
-        in
-            case result of
-                Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
-                r -> Expect.equal output r
 
 getPositionAfter : BasicParser.Operator -> BasicParser.Operator
 getPositionAfter op =

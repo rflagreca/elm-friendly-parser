@@ -1,9 +1,9 @@
 module ParserTest exposing (suite)
 
 import Test exposing (..)
-import Expect
 
 import Parser exposing (..)
+import Utils exposing (..)
 
 suite : Test
 suite =
@@ -49,34 +49,3 @@ testAdapters =
 alwaysTestStringAdapter : InputType String -> String
 alwaysTestStringAdapter val =
     "test"
-
--- UTILS
-
-expectToParse : String -> o -> Parser o -> (() -> Expect.Expectation)
-expectToParse input output parser =
-    \() ->
-        Expect.equal
-            (Matched output)
-            (parse parser input)
-
-expectToFailToParse : String -> Parser o -> (() -> Expect.Expectation)
-expectToFailToParse input parser =
-    \() ->
-        let
-            result = (parse parser input)
-        in
-            Expect.true
-                ("Expected to fail to parse \"" ++ input ++ "\".")
-                (isNotParsed result)
-
-expectToFailToParseWith : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
-expectToFailToParseWith input output parser =
-    \() ->
-        let
-            result = (parse parser input)
-        in
-            case result of
-                Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
-                r -> Expect.equal output r
-
--- TODO: test actions with custom parsers
