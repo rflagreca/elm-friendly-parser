@@ -16,34 +16,34 @@ testStartRule : Test
 testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
-            expectToFailToParseWith
-                "foo"
-                (Failed NoStartRule)
-                (Parser.init alwaysTestStringAdapter)
+            ((Parser.init alwaysTestStringAdapter)
+                |> expectToFailToParseWith
+                    "foo"
+                    (Failed NoStartRule))
         ]
 
 testAdapters : Test
 testAdapters =
     describe "adapters"
         [ test "should parse anything with what adapter returns" <|
-            expectToParse
-                "abc"
-                "test"
-                (Parser.start (match "abc") alwaysTestStringAdapter)
+            ((Parser.start (match "abc") alwaysTestStringAdapter)
+                |> expectToParse
+                    "abc"
+                    "test")
         , test "should parse anything with what adapter returns, p. II" <|
-            expectToParse
-                "abc"
-                "foo"
-                (Parser.start (match "abc") (\_ -> "foo"))
+            ((Parser.start (match "abc") (\_ -> "foo"))
+                |> expectToParse
+                    "abc"
+                    "foo")
         , test "should provide value of what is parsed" <|
-            expectToParse
-                "abc"
-                "abcd"
-                (Parser.start
-                    (match "abc")
-                    (\v -> case v of
-                        Parser.AValue s -> (s ++ "d")
-                        _ -> "failed"))
+            ((Parser.start
+                (match "abc")
+                (\v -> case v of
+                    Parser.AValue s -> (s ++ "d")
+                    _ -> "failed"))
+                |> expectToParse
+                    "abc"
+                    "abcd")
         ]
 
 alwaysTestStringAdapter : InputType String -> String

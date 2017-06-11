@@ -8,33 +8,36 @@ type ReturnType =
      AString String
    | AList (List ReturnType)
    | ANumber Float
-   -- | Operator String
 
--- Expression
---   = head:Term tail:(_ ("+" / "-") _ Term)* {
---       return tail.reduce(function(result, element) {
---         if (element[1] === "+") { return result + element[3]; }
---         if (element[1] === "-") { return result - element[3]; }
---       }, head);
---     }
+{- PEG Grammar
 
--- Term
---   = head:Factor tail:(_ ("*" / "/") _ Factor)* {
---       return tail.reduce(function(result, element) {
---         if (element[1] === "*") { return result * element[3]; }
---         if (element[1] === "/") { return result / element[3]; }
---       }, head);
---     }
+Expression
+  = head:Term tail:(_ ("+" / "-") _ Term)* {
+      return tail.reduce(function(result, element) {
+        if (element[1] === "+") { return result + element[3]; }
+        if (element[1] === "-") { return result - element[3]; }
+      }, head);
+    }
 
--- Factor
---   = "(" _ expr:Expression _ ")" { return expr; }
---   / Integer
+Term
+  = head:Factor tail:(_ ("*" / "/") _ Factor)* {
+      return tail.reduce(function(result, element) {
+        if (element[1] === "*") { return result * element[3]; }
+        if (element[1] === "/") { return result / element[3]; }
+      }, head);
+    }
 
--- Integer "integer"
---   = [0-9]+ { return parseInt(text(), 10); }
+Factor
+  = "(" _ expr:Expression _ ")" { return expr; }
+  / Integer
 
--- _ "whitespace"
---   = [ \t\n\r]*
+Integer "integer"
+  = [0-9]+ { return parseInt(text(), 10); }
+
+_ "whitespace"
+  = [ \t\n\r]*
+
+-}
 
 rules : RulesList ReturnType
 rules =
