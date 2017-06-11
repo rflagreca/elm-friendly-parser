@@ -49,8 +49,8 @@ initState input =
 noValues : Values v
 noValues = Dict.empty
 
-parse : Parser o -> String -> ( ParseResult o, Maybe Position )
-parse parser input =
+parse : String -> Parser o -> ( ParseResult o, Maybe Position )
+parse input parser =
     let
         state = (initState input)
         context = (parser, state)

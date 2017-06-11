@@ -504,7 +504,6 @@ testReportingPosition =
         ]
 
 -- TODO: Test position advances properly for all operators
--- TODO: Failures should contain either index in the input or (better!) both line/column positions
 
 -- UTILS
 
