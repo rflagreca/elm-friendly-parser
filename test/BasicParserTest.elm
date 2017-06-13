@@ -548,7 +548,7 @@ nestedFailureOf strings sample =
     Failed (FollowingNestedOperator
         (List.foldl
             (\(str, sample) failures ->
-                failures ++ [ Failed (ByExpectation (ExpectedValue str, sample)) ])
+                failures ++ [ (ByExpectation (ExpectedValue str, sample)) ])
             []
             strings
         , sample))

@@ -29,7 +29,7 @@ failureReason failure =
         Parser.FollowingRule ruleName innerReason ->
             "Following rule `" ++ ruleName ++ "`, which in its turn:" ++ "\n    " ++
                 failureReason innerReason
-        Parser.FollowingNestedOperator ( nestedResults, sample ) ->
+        Parser.FollowingNestedOperator ( nestedFailures, sample ) ->
             let
                 sampleStr =
                     case sample of
@@ -38,7 +38,7 @@ failureReason failure =
             in
                 "Following nested failures of:\n\n" ++
                     (String.join "\n"
-                        (List.map (\result -> parseResult result Nothing) nestedResults))
+                        (List.map (\result -> failureReason failure) nestedFailures))
                 ++ ", however " ++ sampleStr
         Parser.ByExpectation ( expectation, sample ) ->
             let

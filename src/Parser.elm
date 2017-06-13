@@ -157,7 +157,7 @@ type Sample =
 type FailureReason o =
       ByExpectation ( Expectation, Sample )
     | FollowingRule RuleName (FailureReason o)
-    | FollowingNestedOperator ( List (ParseResult o), Sample )
+    | FollowingNestedOperator ( List (FailureReason o), Sample )
     | NoStartRule
     | SomethingWasNotImplemented
 
@@ -342,7 +342,8 @@ execChoice ops ctx =
                 case applied of
                     ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matchedWith success
                         -- ctx |> loadPosition lastCtx |> matchedWith success
-                    ( _, Nothing, failures ) -> ctx |> failedNestedCC failures
+                    ( _, Nothing, failures ) ->
+                        ctx |> failedNestedCC (keepOnlyFailures failures)
 
 execSome : Operator o -> Context o -> OperatorResult o
 execSome op ctx =
@@ -632,11 +633,11 @@ failedCC : Expectation -> Context o -> OperatorResult o
 failedCC expectation ctx =
     ctx |> failedBy expectation (gotChar ctx)
 
-failedNested : List (ParseResult o) -> Sample -> Context o -> OperatorResult o
+failedNested : List (FailureReason o) -> Sample -> Context o -> OperatorResult o
 failedNested failures sample ctx =
     ctx |> failed (FollowingNestedOperator ( failures, sample ))
 
-failedNestedCC : List (ParseResult o) -> Context o -> OperatorResult o
+failedNestedCC : List (FailureReason o) -> Context o -> OperatorResult o
 failedNestedCC failures ctx =
     ctx |> failedNested failures (gotChar ctx)
 
@@ -705,4 +706,20 @@ findPosition state =
                 ((0, 0), 0)
                 (String.lines input))
 
+keepOnlyMatches : List (ParseResult o) -> List o
+keepOnlyMatches parseResults =
+    List.filterMap
+        (\result ->
+            case result of
+                Matched v -> Just v
+                Failed _ -> Nothing)
+        parseResults
 
+keepOnlyFailures : List (ParseResult o) -> List (FailureReason o)
+keepOnlyFailures parseResults =
+    List.filterMap
+        (\result ->
+            case result of
+                Matched _ -> Nothing
+                Failed failure -> Just failure)
+        parseResults
