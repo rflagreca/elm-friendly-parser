@@ -85,22 +85,51 @@ testExportingMatches =
             \() ->
                 Expect.equal
                     """
+Matched [ "a", [ "foo", "bar", [ "abc" ], "xyz" ], "bar" ].
+"""
+{-
+                    """
 Matched
     "a"
-    "foo", "bar"
+    [ "foo"
+    , "bar"
+    , [ "abc"
+      ]
+    , "xyz"
+    ]
     "bar"
-                    """
+"""
+-}
                     (BPExport.parseResult
                         (Parser.Matched
                             (BP.RList (
                                 [ BP.RString "a"
-                                , BP.RList [ BP.RString "foo", BP.RString "bar" ]
+                                , BP.RList
+                                    [ BP.RString "foo"
+                                    , BP.RString "bar"
+                                    , BP.RList
+                                        [ BP.RString "abc" ]
+                                    , BP.RString "xyz"
+                                    ]
                                 , BP.RString "bar"
                                 ]
-                            ))))
+                            )))
+                        Nothing)
         ]
 
 testExportingFailures : Test
 testExportingFailures =
     describe "exporting friendly failures"
-        [ ]
+        [ test "should properly export expectation with value and value" <|
+            \() ->
+                Expect.equal
+                    """
+Failed at position 20:20 ( line 20, char 20 )
+
+Expected value "a", however got value "b".
+"""
+                    (BPExport.parseResult
+                        (Parser.Failed
+                            (Parser.ByExpectation ( ExpectedValue "a", GotValue "b" ))
+                        )
+                        (Just (20, 20))) ]
