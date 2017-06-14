@@ -1,5 +1,14 @@
 module Parser exposing (..)
 
+{-| Module Documentation
+
+# Section One
+@docs Adapter
+
+# Section Two
+
+-}
+
 import Dict exposing (..)
 import Regex
 
@@ -8,6 +17,9 @@ type InputType o =
     | AList (List o)
     | ARule RuleName o
 
+{-| A custom user function which specifies for every Parser the Source Type
+and the Resulting Type (`o`).
+-}
 type alias Adapter o = (InputType o -> o)
 
 type alias RuleName = String
