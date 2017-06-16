@@ -312,9 +312,10 @@ execSequence ops ctx =
                     firstOp ( restOps, Nothing, [], ctx ) ctx
             in
                 case applied of
-                    ( _, Nothing, matches, lastCtx ) -> lastCtx |> matchedList matches
-                        -- ctx |> loadPosition lastCtx |> matchedList matches
-                    ( _, Just reason, failures, _ ) -> ctx |> failed reason
+                    ( _, Nothing, matches, lastCtx ) ->
+                        lastCtx |> matchedList matches
+                    ( _, Just reason, failures, lastCtx ) ->
+                        ctx |> loadPosition lastCtx |> failed reason
 
 execChoice : List (Operator o) -> Context o -> OperatorResult o
 execChoice ops ctx =
@@ -690,20 +691,39 @@ findPosition : State o -> Position
 findPosition state =
     let
         input = state.input
-        curPosition = state.position
+        allLines = String.lines input
+        linesCount = List.length allLines
+        curPosition = (state.position - (linesCount - 1)) -- '\n' count as separate symbols
     in
-        Tuple.first
+        .cursor
             (List.foldl
-                (\line (pos, sum) ->
-                    if (sum >= curPosition) then ( pos, sum )
+                (\line { cursor, prevCursor, sum } ->
+                    if (sum >= curPosition) then
+                        { cursor = prevCursor
+                        , prevCursor = prevCursor
+                        , sum = sum
+                        }
                     else
-                        case pos of
+                        case cursor of
                             ( lineIndex, charIndex ) ->
-                                if (sum + String.length line) >= curPosition then
-                                    (( lineIndex, curPosition - sum ), sum + String.length line )
-                                else
-                                    (( lineIndex + 1, 0 ), sum + String.length line))
-                ((0, 0), 0)
+                                let
+                                    strlen = (String.length line)
+                                in
+                                    if (sum + strlen) > curPosition then
+                                        { cursor = ( lineIndex, curPosition - sum )
+                                        , prevCursor = cursor
+                                        , sum = sum + strlen
+                                        }
+                                    else
+                                        { cursor = ( lineIndex + 1, 0 )
+                                        , prevCursor = cursor
+                                        , sum = sum + strlen
+                                        }
+                )
+                { cursor = (0, 0)
+                , prevCursor = (0, 0)
+                , sum = 0
+                }
                 (String.lines input))
 
 keepOnlyMatches : List (ParseResult o) -> List o
