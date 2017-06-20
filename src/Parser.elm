@@ -1,24 +1,45 @@
-module Parser exposing (..)
+module Parser exposing
+    ( InputType
+    , Adapter
+    )
 
-{-| Module Documentation
+{-| NB: If you need to parse some string just now or define the rules for later use,
+head to `[BasicParser]()` instead.
 
-# Section One
-@docs Adapter
+This module contains the definition of generic `Parser`, intended to
+be extended and / or customized using type variables. In this module, the
+`o` variable defines the user's `ReturnType`, as opposed to `InputType`.
 
-# Section Two
+`ReturnType` a.k.a. `o` (for `output`) is any type user wants to be returned
+from Parser actions.
+
+For example, `BasicParser` is defined as:
+
+    type alias BasicParser = Parser BasicParserReturnType
+
+hence it returns its own type (which is `RString String | RList (List ReturnType) | RRule RuleName ReturnType`, very simple one) from all the actions and stores it in the actions and in the matches.
+
+# Custom Parser Requirements
+
+@docs InputType
+    , Adapter
 
 -}
 
 import Dict exposing (..)
 import Regex
 
+{-| When chunk was found in the input, it is stored in the `InputType`. When some sequence
+is enclosed into another sequence and matched, the results are stored in the list. When the rule
+matched, we need to store the name of the rule, so it's also stored.
+-}
 type InputType o =
       AValue String
     | AList (List o)
     | ARule RuleName o
 
-{-| A custom user function which specifies for every Parser the Source Type
-and the Resulting Type (`o`).
+{-| A custom user function which specifies for every Parser the converter from Source Type
+to the Resulting Type (`o`).
 -}
 type alias Adapter o = (InputType o -> o)
 
