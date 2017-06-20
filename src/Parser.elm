@@ -1,10 +1,16 @@
 module Parser exposing
-    ( InputType
+    ( Parser, init, parse
+    , Position, ParseResult(..) -- FailureReason(..), Expectation(..), Sample(..)
+    , withRules, setStartRule, noRules, RuleName, Rules, RulesList
+    , ch, match, choice, seqnc, maybe, text, any, some, and, not
+    , action, pre, xpre, label, call, re, redesc
+    , ActionResult(..), PrefixActionResult(..)
+    , InputType(..)
     , Adapter
     )
 
 {-| NB: If you need to parse some string just now or define the rules for later use,
-head to `[BasicParser]()` instead.
+head to `[BasicParser]()` instead. However, the operators are stored in this module.
 
 This module contains the definition of generic `Parser`, intended to
 be extended and / or customized using type variables. In this module, the
@@ -18,6 +24,51 @@ For example, `BasicParser` is defined as:
     type alias BasicParser = Parser BasicParserReturnType
 
 hence it returns its own type (which is `RString String | RList (List ReturnType) | RRule RuleName ReturnType`, very simple one) from all the actions and stores it in the actions and in the matches.
+
+# Parser itself
+
+@docs Parser
+    , init
+    , parse
+
+# Parse Result
+
+@docs Position
+    , ParseResult
+
+# Rules
+
+@docs withRules
+    , setStartRule
+    , noRules
+    , RuleName
+    , Rules
+    , RulesList
+
+# Operators
+
+@docs ch
+    , match
+    , choice
+    , seqnc
+    , maybe
+    , text
+    , any
+    , some
+    , and
+    , not
+    , action
+    , pre
+    , xpre
+    , label
+    , call
+    , re
+    , redesc
+
+# Actions
+
+@docs ActionResult
+    , PrefixActionResult
 
 # Custom Parser Requirements
 
@@ -39,20 +90,25 @@ type InputType o =
     | ARule RuleName o
 
 {-| A custom user function which specifies for every Parser the converter from Source Type
-to the Resulting Type (`o`).
+to the Resulting Type (`o`). TODO
 -}
 type alias Adapter o = (InputType o -> o)
 
+{-| TODO -}
 type alias RuleName = String
+{-| TODO -}
 type alias Rules o = Dict RuleName (Operator o)
+{-| TODO -}
 type alias RulesList o = List ( RuleName, Operator o )
 
+{-| TODO -}
 type alias Parser o =
     { adapt: Adapter o
     , rules: Rules o
     , startRule: String
     }
 
+{-| TODO -}
 init : Adapter o -> Parser o
 init adapter =
     { adapt = adapter
@@ -82,6 +138,7 @@ initState input =
 noValues : Values v
 noValues = Dict.empty
 
+{-| TODO -}
 parse : String -> Parser o -> ( ParseResult o, Maybe Position )
 parse input parser =
     let
@@ -107,9 +164,11 @@ parse input parser =
                         Failed _ -> ( parseResult, Just (findPosition lastState) )
             Nothing -> ( Failed NoStartRule, Nothing )
 
+{-| TODO -}
 noRules : Rules o
 noRules = Dict.empty
 
+{-| TODO -}
 withRules : RulesList o -> Parser o -> Parser o
 withRules rules parser =
     { parser | rules = Dict.fromList rules }
@@ -132,6 +191,7 @@ getStartRule : Parser o -> Maybe (Operator o)
 getStartRule parser =
     Dict.get parser.startRule parser.rules
 
+{-| TODO -}
 setStartRule : RuleName -> Parser o -> Parser o
 setStartRule name parser =
     { parser | startRule = name }
@@ -144,7 +204,9 @@ getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
     Dict.get name parser.rules
 
+{-| TODO -}
 type ActionResult o = Pass o | PassThrough | Fail -- Return o | PassThrough | Fail
+{-| TODO -}
 type PrefixActionResult = Continue | Halt -- Continue | Stop (change ChainStep name to End or Exit/ExitWith)
 
 type alias OperatorResult o = ( ParseResult o, Context o )
@@ -194,78 +256,97 @@ type FailureReason o =
     | NoStartRule
     | SomethingWasNotImplemented
 
+{-| TODO -}
 type alias Position = ( Int, Int )
 
+{-| TODO -}
 type ParseResult o =
       Matched o
     | Failed (FailureReason o)
 
 -- OPERATORS
 
+{-| TODO -}
 ch : Operator o
 ch =
     NextChar
 
+{-| TODO -}
 match : String -> Operator o
 match subject =
     Match subject
 
+{-| TODO -}
 choice : List (Operator o) -> Operator o
 choice operators =
     Choice operators
 
+{-| TODO -}
 seqnc : List (Operator o) -> Operator o
 seqnc operators =
     Sequence operators
 
+{-| TODO -}
 maybe : Operator o -> Operator o
 maybe operator =
     Maybe_ operator
 
+{-| TODO -}
 text : Operator o -> Operator o
 text operator =
     TextOf operator
 
+{-| TODO -}
 any : Operator o -> Operator o
 any operator =
     Any operator
 
+{-| TODO -}
 some : Operator o -> Operator o
 some operator =
     Some operator
 
+{-| TODO -}
 and : Operator o -> Operator o
 and operator =
     And operator
 
+{-| TODO -}
 not : Operator o -> Operator o
 not operator =
     Not operator
 
+{-| TODO -}
 action : Operator o -> UserCode o -> Operator o
 action operator userCode =
     Action operator userCode
 
+{-| TODO -}
 pre : UserPrefixCode o -> Operator o
 pre userCode =
     PreExec userCode
 
+{-| TODO -}
 xpre : UserPrefixCode o -> Operator o
 xpre userCode =
     NegPreExec userCode
 
+{-| TODO -}
 label : String -> Operator o -> Operator o
 label name operator =
     Label name operator
 
+{-| TODO -}
 call : RuleName -> Operator o
 call ruleName =
     Call ruleName
 
+{-| TODO -}
 re : String -> Operator o
 re regex_ =
     Regex regex_ Nothing
 
+{-| TODO -}
 redesc : String -> String -> Operator o
 redesc regex_ description =
     Regex regex_ (Just description)
