@@ -1,4 +1,4 @@
-module Core.Export exposing (..)
+module Export exposing (..)
 
 import Dict
 

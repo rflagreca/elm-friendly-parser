@@ -3,8 +3,8 @@ module ParserExportTest exposing (suite)
 import Test exposing (..)
 import Expect
 
-import Core.Parser exposing (..)
-import Core.Export exposing (..)
+import Parser exposing (..)
+import Export exposing (..)
 
 import BasicParser.Parser as BP exposing (..)
 import BasicParser.Export as BPExport exposing (..)
