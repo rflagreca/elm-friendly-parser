@@ -1,5 +1,5 @@
 module Parser exposing
-    ( Parser, init, parse
+    ( Parser, init, start, parse
     , Position, ParseResult(..) -- FailureReason(..), Expectation(..), Sample(..)
     , withRules, setStartRule, noRules, RuleName, Rules, RulesList
     , ch, match, choice, seqnc, maybe, text, any, some, and, not
@@ -7,6 +7,7 @@ module Parser exposing
     , ActionResult(..), PrefixActionResult(..)
     , InputType(..)
     , Adapter
+    , Operator(..), State
     )
 
 {-| NB: If you need to parse some string just now or define the rules for later use,
@@ -29,6 +30,7 @@ hence it returns its own type (which is `RString String | RList (List ReturnType
 
 @docs Parser
     , init
+    , start
     , parse
 
 # Parse Result
@@ -75,6 +77,11 @@ hence it returns its own type (which is `RString String | RList (List ReturnType
 @docs InputType
     , Adapter
 
+# Operator and State
+
+@docs Operator
+    , State
+
 -}
 
 import Dict exposing (..)
@@ -118,6 +125,7 @@ init adapter =
 
 type alias Values o = Dict String o
 
+{-| TODO -}
 type alias State o =
     { input: String
     , inputLength: Int
@@ -176,6 +184,7 @@ withRules rules parser =
     --     Just ( name, _ ) -> name
     --     Nothing -> "start"
 
+{-| TODO -}
 start : Operator o -> Adapter o -> Parser o
 start op adapter =
     init adapter |> startWith op
@@ -214,7 +223,8 @@ type alias OperatorResult o = ( ParseResult o, Context o )
 type alias UserCode o = (o -> State o -> (ActionResult o))
 type alias UserPrefixCode o = (State o -> PrefixActionResult)
 
-type OperatorType o =
+{-| TODO -}
+type Operator o =
       NextChar -- 1. `ch`
     | Match String -- 2. `match`
     | Regex String (Maybe String) -- 3. `re`
@@ -234,8 +244,6 @@ type OperatorType o =
     | Call RuleName -- 17. `call` a.k.a `ref`
     -- | Alias String (Operator o) -- 18. `as`
     | CallAs RuleName RuleName
-
-type alias Operator o = OperatorType o
 
 type Expectation =
       ExpectedValue String -- FIXME: InputType?
