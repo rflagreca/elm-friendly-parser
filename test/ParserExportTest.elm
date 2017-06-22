@@ -133,3 +133,26 @@ Expected value "a", however got value "b".
                             (Parser.ByExpectation ( ExpectedValue "a", GotValue "b" ))
                         )
                         (Just (20, 20))) ]
+
+testExportingResult : Test
+testExportingResult =
+    describe "exporting friendly result"
+        [ test "should properly export the match" <|
+            \() ->
+                Expect.equal
+                    """
+Matched [ "foo" ].
+"""
+                    (BP.start |> choice [ match "foo", match "bar" ]
+                              |> Parser.parse "foo"
+                              |> BPExport.parseResult)
+        , test "should properly export the match, p.II" <|
+            \() ->
+                Expect.equal
+                    """
+Matched [ "bar" ].
+"""
+                    (BP.start |> choice [ match "foo", match "bar" ]
+                              |> Parser.parse "bar"
+                              |> BPExport.parseResult)
+        ]
