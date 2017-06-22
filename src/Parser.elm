@@ -10,7 +10,27 @@ module Parser exposing
     , Operator(..), State
     )
 
-{-| NB: If you need to parse some string just now or define the rules for later use,
+{-|
+
+# Parsing
+
+If you just need to define rules and to parse some text with them, instantiate the `BasicParser`
+
+    import BasicParser.Parser as BasicParser exposing (..)
+    import BasicParser.Export as Export exposing (..)
+    import Parser exposing (..)
+
+    let
+        myParser = BasicParser.start <| choice [ match "foo", match "bar" ]
+    in
+        myParser |> Parser.parse "foo" |> Export.parseResult
+        {- Matched [ "foo" ] -}
+        myParser |> Parser.parse "bar" |> Export.parseResult
+        {- Matched [ "bar" ] -}
+
+# Custom Parsers
+
+NB: If you need to parse some string just now or define the rules for later use,
 head to `[BasicParser]()` instead. However, the operators are stored in this module.
 
 This module contains the definition of generic `Parser`, intended to
