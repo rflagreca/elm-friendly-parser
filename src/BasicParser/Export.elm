@@ -1,4 +1,13 @@
-module BasicParser.Export exposing (..)
+module BasicParser.Export exposing
+    ( failureReason
+    , parseResult
+    )
+
+{-|
+
+@docs failureReason, parseResult
+
+-}
 
 import BasicParser.Parser as BasicParser exposing (..)
 import Parser exposing (Position, ParseResult)
@@ -19,6 +28,7 @@ returnType value =
 --         Parser.GotValue str -> "got value \"" ++ str ++ "\""
 --         Parser.GotEndOfInput -> "got end of input"
 
+{-| TODO -}
 failureReason : Parser.FailureReason ReturnType -> String
 failureReason failure =
     case failure of
@@ -58,6 +68,7 @@ failureReason failure =
             in
                 expectationStr ++ ", however " ++ sampleStr
 
+{-| TODO -}
 parseResult : BasicParser.ParseResult -> Maybe Parser.Position -> String
 parseResult result maybePos =
      case result of

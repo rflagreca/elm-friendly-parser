@@ -1,3 +1,5 @@
+.PHONY: test local-docs
+
 test:
 	elm-test ./test/All.elm
 

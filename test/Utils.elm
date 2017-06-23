@@ -58,3 +58,17 @@ expectToGetResultOfParsing : String -> ( ParseResult o, Maybe Position ) -> Pars
 expectToGetResultOfParsing input result parser =
     \() ->
         Expect.equal result (parser |> parse input)
+
+
+isNotParsed : ParseResult o -> Bool
+isNotParsed result =
+    case result of
+        Matched _ -> False
+        Failed _ -> True
+
+
+isParsedAs : String -> ParseResult o -> Bool
+isParsedAs subject result =
+    case result of
+        Matched s -> (toString s == subject)
+        Failed _-> False

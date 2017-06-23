@@ -1,6 +1,7 @@
 module BasicParser.Parser exposing
     ( BasicParser
     , init, start, withRules
+    , ParseResult
     , ReturnType(..)
     , Rules, Operator )
 
@@ -11,6 +12,8 @@ module BasicParser.Parser exposing
 @docs init
     , start
     , withRules
+
+@docs ParseResult
 
 @docs ReturnType
 
@@ -33,6 +36,7 @@ type alias Rules = Parser.Rules ReturnType
 type alias RulesList = Parser.RulesList ReturnType
 type alias InputType = Parser.InputType ReturnType
 
+{-| TODO -}
 type alias ParseResult = Parser.ParseResult ReturnType
 
 {-| TODO -}

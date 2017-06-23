@@ -1,7 +1,7 @@
 module Parser exposing
-    ( Parser, init, start, parse
-    , Position, ParseResult(..) -- FailureReason(..), Expectation(..), Sample(..)
-    , withRules, setStartRule, noRules, RuleName, Rules, RulesList
+    ( Parser, init, start, startWith, parse
+    , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
+    , withRules, setStartRule, getStartRule, getRule, noRules, RuleName, Rules, RulesList
     , ch, match, choice, seqnc, maybe, text, any, some, and, not
     , action, pre, xpre, label, call, re, redesc
     , ActionResult(..), PrefixActionResult(..)
@@ -51,17 +51,23 @@ hence it returns its own type (which is `RString String | RList (List ReturnType
 @docs Parser
     , init
     , start
+    , startWith
     , parse
 
 # Parse Result
 
 @docs Position
     , ParseResult
+    , FailureReason
+    , Expectation
+    , Sample
 
 # Rules
 
 @docs withRules
     , setStartRule
+    , getStartRule
+    , getRule
     , noRules
     , RuleName
     , Rules
@@ -209,6 +215,7 @@ start : Operator o -> Adapter o -> Parser o
 start op adapter =
     init adapter |> startWith op
 
+{-| TODO -}
 startWith : Operator o -> Parser o -> Parser o
 startWith op parser =
     parser |> addRule "start" op
@@ -216,6 +223,7 @@ startWith op parser =
 addStartRule : Operator o -> Parser o -> Parser o
 addStartRule = startWith
 
+{-| TODO -}
 getStartRule : Parser o -> Maybe (Operator o)
 getStartRule parser =
     Dict.get parser.startRule parser.rules
@@ -229,6 +237,7 @@ addRule : RuleName -> Operator o -> Parser o -> Parser o
 addRule name op parser =
     { parser | rules = parser.rules |> Dict.insert name op }
 
+{-| TODO -}
 getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
     Dict.get name parser.rules
@@ -265,6 +274,7 @@ type Operator o =
     -- | Alias String (Operator o) -- 18. `as`
     | CallAs RuleName RuleName
 
+{-| TODO -}
 type Expectation =
       ExpectedValue String -- FIXME: InputType?
     | ExpectedAnything
@@ -273,10 +283,12 @@ type Expectation =
     --| ExpectedStartRule
     | ExpectedEndOfInput
 
+{-| TODO -}
 type Sample =
       GotValue String
     | GotEndOfInput
 
+{-| TODO -}
 type FailureReason o =
       ByExpectation ( Expectation, Sample )
     | FollowingRule RuleName (FailureReason o)
@@ -686,17 +698,6 @@ chain stepFn initialOp initialVal initialCtx =
     in
         unfold initialOp initialCtx initialVal
 
-isNotParsed : ParseResult o -> Bool
-isNotParsed result =
-    case result of
-        Matched _ -> False
-        Failed _ -> True
-
-isParsedAs : String -> ParseResult o -> Bool
-isParsedAs subject result =
-    case result of
-        Matched s -> (toString s == subject)
-        Failed _-> False
 
 advanceBy : Int -> Context o -> Context o
 advanceBy count ctx =

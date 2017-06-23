@@ -1,4 +1,16 @@
-module Export exposing (..)
+module Export exposing
+    ( operator
+    , rules
+    , parser
+    )
+
+{-|
+
+@docs operator
+    , rules
+    , parser
+
+-}
 
 import Dict
 
@@ -11,6 +23,8 @@ rootOperator op =
         Choice ops -> String.join " / " (List.map rootOperator ops)
         _ -> operator op
 
+
+{-| TODO -}
 operator : Operator o -> String
 operator op =
     case op of
@@ -31,12 +45,16 @@ rule : RuleName -> Operator o -> String
 rule name op =
     name ++ "\n= " ++ (rootOperator op) ++ "\n\n"
 
+
+{-| TODO -}
 rules : Rules o -> String
 rules r =
     r |> Dict.foldl
         (\name op str -> str ++ (rule name op))
         "\n"
 
+
+{-| TODO -}
 parser : Parser o -> String
 parser p =
     rules p.rules
