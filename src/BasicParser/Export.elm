@@ -69,8 +69,8 @@ failureReason failure =
                 expectationStr ++ ", however " ++ sampleStr
 
 {-| TODO -}
-parseResult : BasicParser.ParseResult -> Maybe Parser.Position -> String
-parseResult result maybePos =
+parseResult : ( BasicParser.ParseResult, Maybe Parser.Position ) -> String
+parseResult ( result, maybePos ) =
      case result of
         Parser.Matched value -> "\nMatched " ++ (returnType value) ++ ".\n"
         Parser.Failed failure ->

@@ -101,7 +101,7 @@ Matched
 """
 -}
                     (BPExport.parseResult
-                        (Parser.Matched
+                        ((Parser.Matched
                             (BP.RList (
                                 [ BP.RString "a"
                                 , BP.RList
@@ -114,7 +114,7 @@ Matched
                                 , BP.RString "bar"
                                 ]
                             )))
-                        Nothing)
+                        , Nothing))
         ]
 
 testExportingFailures : Test
@@ -129,30 +129,34 @@ Failed at position 20:20 ( line 20, char 20 )
 Expected value "a", however got value "b".
 """
                     (BPExport.parseResult
-                        (Parser.Failed
-                            (Parser.ByExpectation ( ExpectedValue "a", GotValue "b" ))
+                        (
+                            (Parser.Failed
+                                (Parser.ByExpectation ( ExpectedValue "a", GotValue "b" ))
+                            )
+                        , (Just (20, 20))
                         )
-                        (Just (20, 20))) ]
+                    )
+        ]
 
--- testExportingResult : Test
--- testExportingResult =
---     describe "exporting friendly result"
---         [ test "should properly export the match" <|
---             \() ->
---                 Expect.equal
---                     """
--- Matched [ "foo" ].
--- """
---                     (BP.start |> choice [ match "foo", match "bar" ]
---                               |> Parser.parse "foo"
---                               |> BPExport.parseResult)
---         , test "should properly export the match, p.II" <|
---             \() ->
---                 Expect.equal
---                     """
--- Matched [ "bar" ].
--- """
---                     (BP.start |> choice [ match "foo", match "bar" ]
---                               |> Parser.parse "bar"
---                               |> BPExport.parseResult)
---         ]
+testExportingResult : Test
+testExportingResult =
+    describe "exporting friendly result"
+        [ test "should properly export the match" <|
+            \() ->
+                Expect.equal
+                    """
+Matched [ "foo" ].
+"""
+                    (BP.start (choice [ match "foo", match "bar" ])
+                              |> Parser.parse "foo"
+                              |> BPExport.parseResult)
+        , test "should properly export the match, p.II" <|
+            \() ->
+                Expect.equal
+                    """
+Matched [ "bar" ].
+"""
+                    (BP.start (choice [ match "foo", match "bar" ])
+                              |> Parser.parse "bar"
+                              |> BPExport.parseResult)
+        ]
