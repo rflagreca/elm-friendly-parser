@@ -14,19 +14,67 @@ module Parser exposing
 
 # Parsing
 
-If you just need to define rules and to parse some text with them, instantiate the `BasicParser`
+If you just want to define some Rules and parse a text with them, then instantiate the [`BasicParser`](TODO)—this is the way to do your parsing fast and easy.
 
     import BasicParser.Parser as BasicParser exposing (..)
     import BasicParser.Export as Export exposing (..)
     import Parser exposing (..)
 
     let
-        myParser = BasicParser.start <| choice [ match "foo", match "bar" ]
+        myParser = BasicParser.start
+            <| choice
+                [ match "foo"
+                , match "bar"
+                ]
     in
-        myParser |> Parser.parse "foo" |> Export.parseResult
+        myParser
+            |> Parser.parse "foo"
+            |> Export.parseResult
         {- Matched [ "foo" ] -}
-        myParser |> Parser.parse "bar" |> Export.parseResult
+
+        myParser
+            |> Parser.parse "bar"
+            |> Export.parseResult
         {- Matched [ "bar" ] -}
+
+The `BasicParser` only knows how to operate with `String`s, but that should be enough for almost every parsing you would want. If you need more, read this sections and then advance to [Custom Parsers](#custom-parsers) section.
+
+`BasicParser.start` uses the provided [Operator tree](#Operators) as a Start Rule (the one executed first) and when you call `Parser.parse`, it applies the [Operators](#Operators) from the Start Rule to the input text in the same way they go:
+
+    * `choice` means it should try variants passed inside one by one and when one passes, consider it as a success;
+    * `match "foo"` means it should just try to match the string "foo" at current position;
+    * `match "bar"` means it should just try to match the string "bar" at current position;
+    * check if the input is parsed till the end and succeed if there were no failures before;
+
+As you probably mentioned, the Rule may start only with one Operator, but then it may branch in the infinite directions, including the ability to call other Rules by name (we'll cover it later). If you need to start with a sequence of checks at the root point, just use `seqnc` (short for _sequence_) to wrap them.
+
+To define your own Rules, you'll need [Operators](#Operators), such as `choice`,
+`seqnc` (short for _sequence_) or `match`. Actually, all these Operators are inspired with [PEG Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and every rule has the equivalent there, with several extensions. The ones we have out of the box are:
+
+    * `match String`: match the given string;
+    * `ch` : match exactly one character, no matter which;
+    * `re String`: match the given regular expression;
+    * `call String`: call the Rule by its name (we'll cover it below);
+    * `seqnc (List Operator)`: perform the listed operators one by one;
+    * `choice (List Operator)`: try the listed operators one by one, unless one matches;
+    * `maybe Operator`: try to perform the given operator and continue even if it fails;
+    * `any Operator`: try to perform the given operator several times and continue even if it fails;
+    * `some Operator`: try to perform the given operator several times and continue only if matched at least one time;
+    * `and Operator`: require the given operator to match, but do not advance the position after that;
+    * `not Operator`: require the given operator not to match, but do not advance the position after that;
+    * `action Operator UserCode`: execute the operator, then execute the user code to let user determine if it actually matches, and also return any value user returned from the code;
+    * `pre Operator UserPrefixCode`: execute the operator, then execute the user code to let user determine if it actually matches, do not advance the position after that;
+    * `xpre Operator UserPrefixCode`: execute the operator, then execute the user code and match only if the code failed, do not advance the position after that;
+    * `text Operator`: execute the operator, omit the results returned from the inside and return only the matched text as a string;
+    * `label String Operator`: save the result of the given Operator in context under the given label;
+
+For the details on every Operator, see the [Operators](#Operators) section below.
+
+`Export.parseResult` builds a friendly string from the [Parse Result](#parse-result), returned from `Parser.parse`.
+
+There is no requirement to have only one Rule, you may have dozens and you may call any by its name,but only one Rule may trigger the parsing process: The Start Rule. To build your own set of rules, not just a Start Rule, you'll need some [initialization](#Initialization) methods:
+
+This Parser implementation was inspired with the [functional version of `peg-js`]() I made few years ago.
 
 # Custom Parsers
 
@@ -46,13 +94,16 @@ For example, `BasicParser` is defined as:
 
 hence it returns its own type (which is `RString String | RList (List ReturnType) | RRule RuleName ReturnType`, very simple one) from all the actions and stores it in the actions and in the matches.
 
-# Parser itself
+# Initialization
 
 @docs Parser
     , init
     , start
     , startWith
-    , parse
+
+# Parsing
+
+@docs parse
 
 # Parse Result
 
@@ -75,12 +126,14 @@ hence it returns its own type (which is `RString String | RList (List ReturnType
 
 # Operators
 
-@docs ch
-    , match
-    , choice
+@docs match
+    , ch
+    , re
+    , redesc
+    , call
     , seqnc
+    , choice
     , maybe
-    , text
     , any
     , some
     , and
@@ -88,10 +141,8 @@ hence it returns its own type (which is `RString String | RList (List ReturnType
     , action
     , pre
     , xpre
+    , text
     , label
-    , call
-    , re
-    , redesc
 
 # Actions
 
@@ -256,7 +307,7 @@ type alias UserPrefixCode o = (State o -> PrefixActionResult)
 type Operator o =
       NextChar -- 1. `ch`
     | Match String -- 2. `match`
-    | Regex String (Maybe String) -- 3. `re`
+    | Regex String (Maybe String) -- 3. `re`, `redesc`
     | TextOf (Operator o) -- 4. `text`
     | Maybe_ (Operator o) -- 5. `maybe`
     | Some (Operator o) -- 6. `some`

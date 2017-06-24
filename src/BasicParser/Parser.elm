@@ -3,19 +3,28 @@ module BasicParser.Parser exposing
     , init, start, withRules
     , ParseResult
     , ReturnType(..)
-    , Rules, Operator )
+    , Rules, Operator
+    )
 
 {-| TODO
 
 @docs BasicParser
 
+# Initialization
+
 @docs init
     , start
     , withRules
 
+# Parse Result
+
 @docs ParseResult
 
+# Return Type
+
 @docs ReturnType
+
+# Extensions
 
 @docs Rules
     , Operator
