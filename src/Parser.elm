@@ -39,7 +39,7 @@ If you just want to define some Rules and parse a text with them, then instantia
 
 The `BasicParser` only knows how to operate with `String`s, but that should be enough for almost every parsing you would want. If you need more, read this sections and then advance to [Custom Parsers](#custom-parsers) section.
 
-`BasicParser.start` uses the provided [Operator tree](#Operators) as a Start Rule (the one executed first) and when you call `Parser.parse`, it applies the [Operators](#Operators) from the Start Rule to the input text in the same way they go:
+[`Parser.start`]() uses the provided [Operator tree](#Operators) as a Start Rule (the one executed first) and when you call `Parser.parse`, it applies the [Operators](#Operators) from the Start Rule to the input text in the same way they go:
 
     * `choice` means it should try variants passed inside one by one and when one passes, consider it as a success;
     * `match "foo"` means it should just try to match the string "foo" at current position;
@@ -62,19 +62,74 @@ To define your own Rules, you'll need [Operators](#Operators), such as `choice`,
     * `some Operator`: try to perform the given operator several times and continue only if matched at least one time;
     * `and Operator`: require the given operator to match, but do not advance the position after that;
     * `not Operator`: require the given operator not to match, but do not advance the position after that;
-    * `action Operator UserCode`: execute the operator, then execute the user code to let user determine if it actually matches, and also return any value user returned from the code;
-    * `pre Operator UserPrefixCode`: execute the operator, then execute the user code to let user determine if it actually matches, do not advance the position after that;
-    * `xpre Operator UserPrefixCode`: execute the operator, then execute the user code and match only if the code failed, do not advance the position after that;
+    * `action Operator UserCode`: execute the operator, then execute [the user code](#Actions) to let user determine if it actually matches, and also return any value user returned from the code;
+    * `pre Operator UserPrefixCode`: execute the operator, then execute [the user code](#Actions) to let user determine if it actually matches, do not advance the position after that;
+    * `xpre Operator UserPrefixCode`: execute the operator, then execute [the user code](#Actions) and match only if the code failed, do not advance the position after that;
     * `text Operator`: execute the operator, omit the results returned from the inside and return only the matched text as a string;
-    * `label String Operator`: save the result of the given Operator in context under the given label;
+    * `label String Operator`: save the result of the given Operator in context under the given label, this is useful for getting access to this value from [user code](#Actions);
 
 For the details on every Operator, see the [Operators](#Operators) section below.
 
 `Export.parseResult` builds a friendly string from the [Parse Result](#parse-result), returned from `Parser.parse`.
 
-There is no requirement to have only one Rule, you may have dozens and you may call any by its name,but only one Rule may trigger the parsing process: The Start Rule. To build your own set of rules, not just a Start Rule, you'll need some [initialization](#Initialization) methods:
+[Parse Result](#parse-result) could be a complex structure, since it defines all the details it may get about the match or the failure, but in general it gets down to two variants:
 
-This Parser implementation was inspired with the [functional version of `peg-js`]() I made few years ago.
+    * `Matched value` — when parsing was successful;
+    * `Failed failureReason` — when parsing was not successful;
+
+For now, `Parser.parse` actually returns the pair of `(ParseResult, Maybe Position)` and this pair has the `position` (which is a tuple, `(Int, Int)`, with line index and character index) defined only on failure.
+
+There is no requirement to have only one Rule, you may have dozens of them and you may call any by its name with [`call` Operator](TODO),but only one Rule may trigger the parsing process: The Start Rule. To build your own set of rules, not just a Start Rule, you'll need some other [initialization](#Initialization) methods:
+
+For example, [`Parser.withRules`](TODO) allows you to define all the rules as a list:
+
+    BasicParser.withRules
+        [ ( "syllable", seqnc [ ch, ch ] )
+        , ( "EOL", re "\n" )
+        , ( "three-syllables",
+            seqnc (List.repeat 3 (call "syllable")) )
+        , ( "five-syllables",
+            seqnc (List.repeat 5 (call "syllable")) )
+        , ( "haiku",
+            seqnc
+                [ call "three-syllables", call "EOL"
+                , call "five-syllables", call "EOL"
+                , call "three-syllables", call "EOL"
+                ] )
+        ]
+        |> Parser.setStartRule "haiku"
+        |> Parser.parse "..."
+
+Or, you call your rule in the Start Rule:
+
+    BasicParser.withRules
+        [ ( "syllable", seqnc [ ch, ch ] )
+        , ...
+        , ( "haiku", ... )
+        ]
+        |> Parser.startWith (call "haiku")
+        |> Parser.parse "..."
+
+Which is the same as:
+
+    BasicParser.withRules
+        [ ( "syllable", seqnc [ ch, ch ] )
+        , ...
+        , ( "haiku", ... )
+        , ( "start", call "haiku" )
+        ]
+        |> Parser.parse "..."
+
+
+So, if your Rules list contains the Rule under the name "start", it will be called automatically
+on start.
+
+This Parser implementation was inspired with the [functional version of `peg-js`](http://shamansir.github.io/blog/articles/generating-functional-parsers/) I made few years ago.
+
+# Actions
+
+[`UserCode`](TODO) is the alias for a function `(o -> State o -> (ActionResult o))`.
+[`UserPrefixCode`](TODO) is the alias for a function `(State o -> PrefixActionResult)`.
 
 # Custom Parsers
 
@@ -159,6 +214,8 @@ hence it returns its own type (which is `RString String | RList (List ReturnType
 @docs Operator
     , State
 
+# PEG compatibility and Export
+
 -}
 
 import Dict exposing (..)
@@ -224,6 +281,8 @@ noValues : Values v
 noValues = Dict.empty
 
 {-| TODO -}
+-- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
+--        may be change ParseResult to `OpParseResult = OpMatched | OpFailed` and keep it private
 parse : String -> Parser o -> ( ParseResult o, Maybe Position )
 parse input parser =
     let
