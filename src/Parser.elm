@@ -39,7 +39,9 @@ If you just want to define some Rules and parse a text with them, then instantia
 
 The `BasicParser` only knows how to operate with `String`s, but that should be enough for almost every parsing you would want. If you need more, read this sections and then advance to [Custom Parsers](#custom-parsers) section.
 
-[`Parser.start`]() uses the provided [Operator tree](#Operators) as a Start Rule (the one executed first) and when you call `Parser.parse`, it applies the [Operators](#Operators) from the Start Rule to the input text in the same way they go:
+To explore more examples than this documentation has, see [sample parsers in the repository](https://github.com/shamansir/elm-friendly-parser/blob/master/test/samples).
+
+[`Parser.start`](TODO) uses the provided [Operator tree](#Operators) as a Start Rule (the one executed first) and when you call `Parser.parse`, it applies the [Operators](#Operators) from the Start Rule to the input text in the same way they go:
 
     * `choice` means it should try variants passed inside one by one and when one passes, consider it as a success;
     * `match "foo"` means it should just try to match the string "foo" at current position;
@@ -121,12 +123,13 @@ Which is the same as:
         |> Parser.parse "..."
 
 
-So, if your Rules list contains the Rule under the name "start", it will be called automatically
-on start.
+So, if your Rule list contains a Rule under the name "start", it will be automatically called first.
 
 This Parser implementation was inspired with the [functional version of `peg-js`](http://shamansir.github.io/blog/articles/generating-functional-parsers/) I made few years ago.
 
 # Actions
+
+Actions are the functions allowed to be executed when any [Operator](#Operators) was performed and they are allowed to replace its result with some value and/or report the success or failure of this Operator instead of the actual things happened in the process.
 
 [`UserCode`](TODO) is the alias for a function `(o -> State o -> (ActionResult o))`.
 [`UserPrefixCode`](TODO) is the alias for a function `(State o -> PrefixActionResult)`.
@@ -134,20 +137,48 @@ This Parser implementation was inspired with the [functional version of `peg-js`
 # Custom Parsers
 
 NB: If you need to parse some string just now or define the rules for later use,
-head to `[BasicParser]()` instead. However, the operators are stored in this module.
+head to `[BasicParser](TODO)` instead. However, notice that the [Operators](#Operators) are stored in this module.
 
-This module contains the definition of generic `Parser`, intended to
-be extended and / or customized using type variables. In this module, the
-`o` variable defines the user's `ReturnType`, as opposed to `InputType`.
+This module contains the definition of generic `Parser`, intended to be extended and / or customized using type variables. In this module, the `o` variable defines the user's `ReturnType`, as opposed to `InputType`.
 
-`ReturnType` a.k.a. `o` (for `output`) is any type user wants to be returned
-from Parser actions.
+`ReturnType` a.k.a. `o` (for `output`) is any type user wants to be returned from Parser [actions](#Actions).
 
 For example, `BasicParser` is defined as:
 
     type alias BasicParser = Parser BasicParserReturnType
 
 hence it returns its own type (which is `RString String | RList (List ReturnType) | RRule RuleName ReturnType`, very simple one) from all the actions and stores it in the actions and in the matches.
+
+The `PhoneNumberParser` from [the samples](https://github.com/shamansir/elm-friendly-parser/blob/master/test/samples) is defined as:
+
+    type alias PhoneNumberParserReturnType = String
+    type alias PhoneNumberParser = Parser PhoneNumberParserReturnType
+
+so it just returns `String` no matter what. However, the `TypedPhoneNumberParser` is defined as:
+
+    type alias TypedPhoneNumberParser = Parser PhoneNumberPart
+
+where `PhoneNumberPart` is:
+
+    type PhoneNumberPart =
+          AString String
+        | AList (List PhoneNumberPart)
+        | Prefix String Int
+        | Operator Int
+        | Local (Int, Int, Int)
+        | PhoneNumber
+            { prefix: (String, Int)
+            , operator: Int
+            , local: (Int, Int, Int)
+            }
+
+so it may define the phone number completely using a suggested type or fallback to `String` or `List` when some part of the phone number failed to match. This may happen even when parsing process was successful in general, for example it's allowed to fail to parse optional branches of the Operators `choice`, `maybe`, `any`, `some`, `not`.
+
+If you want to create a custom parser on your own, you should consider which `ReturnType` you want to have and define the `Adapter` — the function which converts the `InputType` instances, received by the `Parser` during the general process of parsing (`String`, `List String` or a `Rule name`), to `o` a.k.a. the `ReturnType`, a type defining the final or a temporary result of your custom parsing process, of any complexity.
+
+So, for the parser of Poker Game Hands, your `ReturnType` may define suit and a rank of every card. The parser of geographical definitions, such as KML files, may define `ReturnType` as a list of langitudes and longitudes and so on.
+
+TODO!
 
 # Initialization
 
@@ -240,6 +271,7 @@ type alias RuleName = String
 {-| TODO -}
 type alias Rules o = Dict RuleName (Operator o)
 {-| TODO -}
+-- FIXME: Rename to Grammar?
 type alias RulesList o = List ( RuleName, Operator o )
 
 {-| TODO -}
@@ -282,7 +314,8 @@ noValues = Dict.empty
 
 {-| TODO -}
 -- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
---        may be change ParseResult to `OpParseResult = OpMatched | OpFailed` and keep it private
+--        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
+--        Fix the docs in the intro then.
 parse : String -> Parser o -> ( ParseResult o, Maybe Position )
 parse input parser =
     let

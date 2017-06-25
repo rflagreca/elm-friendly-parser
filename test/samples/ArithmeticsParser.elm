@@ -4,41 +4,13 @@ import Parser exposing (..)
 
 import Dict
 
+{- The possible ReturnType for this parser, just extends the basic types with `ANumber` -}
 type ReturnType =
      AString String
    | AList (List ReturnType)
    | ANumber Float
 
-{- PEG Grammar
-
-Expression
-  = head:Term tail:(_ ("+" / "-") _ Term)* {
-      return tail.reduce(function(result, element) {
-        if (element[1] === "+") { return result + element[3]; }
-        if (element[1] === "-") { return result - element[3]; }
-      }, head);
-    }
-
-Term
-  = head:Factor tail:(_ ("*" / "/") _ Factor)* {
-      return tail.reduce(function(result, element) {
-        if (element[1] === "*") { return result * element[3]; }
-        if (element[1] === "/") { return result / element[3]; }
-      }, head);
-    }
-
-Factor
-  = "(" _ expr:Expression _ ")" { return expr; }
-  / Integer
-
-Integer "integer"
-  = [0-9]+ { return parseInt(text(), 10); }
-
-_ "whitespace"
-  = [ \t\n\r]*
-
--}
-
+{- The actual grammar for this parser. See `arithmetics.peg` in this directory for the source PEG Grammar -}
 rules : RulesList ReturnType
 rules =
     [ ( "Expression"
@@ -101,80 +73,23 @@ rules =
       )
     ]
 
+{- init and set start rule to "Expression" -}
 init : Parser ReturnType
 init =
        Parser.init adapter
     |> Parser.withRules rules
     |> Parser.setStartRule "Expression"
 
+{- The adapter, which converts basic `InputType` to our `ReturnType`.
+Does nothing special here, since we only use extended `ANumber` type
+in actions. As an improvement, we also may store arithmetics operator:
+`+`, `-`, `/` or `*` -}
 adapter : InputType ReturnType -> ReturnType
 adapter input =
     case input of
         Parser.AValue str -> AString str
         Parser.AList list -> AList list
         Parser.ARule name value -> value
-
-digitsToInt : List ReturnType -> Maybe Float
-digitsToInt probablyDigits =
-    let
-        collapse =
-            (\val prev ->
-                case prev of
-                    Just prevDigits ->
-                        case val of
-                            AString a ->
-                                Just (prevDigits ++ a)
-                            _ -> Nothing
-                    Nothing -> Nothing)
-    in
-        case List.foldl collapse (Just "") probablyDigits of
-            Just digitsString -> String.toFloat digitsString |> Result.toMaybe
-            Nothing -> Nothing
-
-integerAction : ReturnType -> State ReturnType -> ActionResult ReturnType
-integerAction source _ =
-    case source of
-        AList maybeDigits ->
-            case digitsToInt maybeDigits of
-                Just value -> Pass (ANumber value)
-                Nothing -> Fail
-        _ -> Fail
-
-expressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
-expressionAction _ state =
-    let
-        maybeHead = (Dict.get "head" state.values)
-        maybeTail = (Dict.get "tail" state.values)
-        reducer = reduceAdditionAndSubtraction
-    in
-        case ( maybeHead, maybeTail ) of
-            ( Just head, Just tail ) ->
-                case ( head, tail ) of
-                    ( ANumber headNum, AList tailList ) ->
-                        Pass (ANumber (List.foldl reducer headNum tailList))
-                    _ -> Fail
-            _ -> Fail
-
-termAction : ReturnType -> State ReturnType -> ActionResult ReturnType
-termAction _ state =
-    let
-        maybeHead = (Dict.get "head" state.values)
-        maybeTail = (Dict.get "tail" state.values)
-        reducer = reduceMultiplicationAndDivision
-    in
-        case ( maybeHead, maybeTail ) of
-            ( Just head, Just tail ) ->
-                case ( head, tail ) of
-                    ( ANumber headNum, AList tailList ) ->
-                        Pass (ANumber (List.foldl reducer headNum tailList))
-                    _ -> Fail
-            _ -> Fail
-
-extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
-extractExpressionAction _ state =
-    case Dict.get "expr" state.values of
-        Just val -> Pass val
-        Nothing -> Fail
 
 reduceAdditionAndSubtraction : ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =
@@ -195,3 +110,70 @@ reduceMultiplicationAndDivision triplet sum =
                 "/" -> sum / v
                 _ -> -1
         _ -> -1
+
+{- The action of the "integer" rule. -}
+integerAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+integerAction source _ =
+    case source of
+        AList maybeDigits ->
+            case digitsToFloat maybeDigits of
+                Just value -> Pass (ANumber value)
+                Nothing -> Fail
+        _ -> Fail
+
+{- The action of the "Expression" rule. -}
+expressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+expressionAction _ state =
+    let
+        maybeHead = (Dict.get "head" state.values)
+        maybeTail = (Dict.get "tail" state.values)
+        reducer = reduceAdditionAndSubtraction
+    in
+        case ( maybeHead, maybeTail ) of
+            ( Just head, Just tail ) ->
+                case ( head, tail ) of
+                    ( ANumber headNum, AList tailList ) ->
+                        Pass (ANumber (List.foldl reducer headNum tailList))
+                    _ -> Fail
+            _ -> Fail
+
+{- The action of the "Term" rule. -}
+termAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+termAction _ state =
+    let
+        maybeHead = (Dict.get "head" state.values)
+        maybeTail = (Dict.get "tail" state.values)
+        reducer = reduceMultiplicationAndDivision
+    in
+        case ( maybeHead, maybeTail ) of
+            ( Just head, Just tail ) ->
+                case ( head, tail ) of
+                    ( ANumber headNum, AList tailList ) ->
+                        Pass (ANumber (List.foldl reducer headNum tailList))
+                    _ -> Fail
+            _ -> Fail
+
+{- The action used inside the "Factor" rule. -}
+extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+extractExpressionAction _ state =
+    case Dict.get "expr" state.values of
+        Just val -> Pass val
+        Nothing -> Fail
+
+{- Convert a list of potential digits to a float. -}
+digitsToFloat : List ReturnType -> Maybe Float
+digitsToFloat probablyDigits =
+    let
+        collapse =
+            (\val prev ->
+                case prev of
+                    Just prevDigits ->
+                        case val of
+                            AString a ->
+                                Just (prevDigits ++ a)
+                            _ -> Nothing
+                    Nothing -> Nothing)
+    in
+        case List.foldl collapse (Just "") probablyDigits of
+            Just digitsString -> String.toFloat digitsString |> Result.toMaybe
+            Nothing -> Nothing
