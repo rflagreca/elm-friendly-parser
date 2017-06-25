@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
-import Export exposing (..)
+import Core.Export as Export exposing (..)
 
 import BasicParser.Parser as BP exposing (..)
 import BasicParser.Export as BPExport exposing (..)

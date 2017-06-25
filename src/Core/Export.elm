@@ -1,4 +1,4 @@
-module Export exposing
+module Core.Export exposing
     ( operator
     , rules
     , parser
@@ -14,7 +14,7 @@ module Export exposing
 
 import Dict
 
-import Parser exposing (..)
+import Core.Parser as Parser exposing (..)
 
 rootOperator : Operator o -> String
 rootOperator op =

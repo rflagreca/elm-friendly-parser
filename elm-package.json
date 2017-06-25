@@ -9,7 +9,7 @@
     ],
     "exposed-modules": [
         "Parser",
-        "Export",
+        "Core.Export",
         "BasicParser.Parser",
         "BasicParser.Export"
     ],

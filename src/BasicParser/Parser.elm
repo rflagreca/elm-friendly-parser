@@ -30,7 +30,7 @@ module BasicParser.Parser exposing
     , Operator
 
 -}
-import Parser exposing (..)
+import Core.Parser as Parser exposing (..)
 
 {-| TODO -}
 type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
