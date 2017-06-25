@@ -297,7 +297,16 @@ init adapter =
 
 type alias Values o = Dict String o
 
-{-| TODO -}
+{-|
+
+* `input` – contains the string that was passed to a `parse()` function, so here it stays undefined and just provides global access to it, but surely it's initialized with new value on every call to `parse()`;
+* `pos` – current parsing position in the `input` string, it resets to 0 on every `parse()` call and keeps unevenly increasing until reaches the length of current `input` minus one, except the cases when any of fall-back operators were met (like `choice` or  `and` or `pre` or `xpre` or ...), then it moves back a bit or stays at one place for some time, but still returns to increasing way just after that;
+* `p_pos` (notice the underscore) – previous parsing position, a position in `input` string where parser resided just before the execution of current operator. So for matching operators (`match`, `ref`, `some`, `any`, ...), a string chunk between `input[p_pos]` and `input[pos]` is always a matched part of an input.
+* `options` – options passed to `parse()` function;
+
+-}
+-- FIXME: it should be possible to get ( Line, Position ),
+-- and also Previous Position in state
 type alias State o =
     { input: String
     , inputLength: Int
@@ -455,17 +464,42 @@ type ParseResult o =
 
 -- OPERATORS
 
-{-| 1. `match` -}
+{-| 1. `match`
+
+This operator tries to match next portion of an input with given string, using string length to consider the size of a portion to test. If the match passed, input position is advanced by the very same value. If input position plus string length exceeds input length – parser fails saying it reached end-of-input. If input does not contains the given string, parser fails saying current character and expected string. (It is possible to provide which part of input exactly was different, but original `peg.js` tests do not cover it and it's commonly considered optional, so it may be a homework for a reader).
+
+* **Parser example:** `Parser.startWith <| seqnc [ ch, match "oo" ]`
+* **PEG syntax:** `"<string>"`, `'<string>'`
+* **PEG example:** `start = . 'oo'`
+
+-}
 match : String -> Operator o
 match subject =
     Match subject
 
-{-| 2. `ch` -}
+{-| 2. `ch`
+
+This operator hoists the next character from the text. If current position is greater than input length, it fails with telling that parser expected any symbol and got end-of-input instead. If next character is what we searched for, input position is advanced by one.
+
+* **Parser example:** `Parser.startWith <| seqnc [ ch, ch, ch ]`
+* **PEG syntax:** `.`
+* **PEG example:** `start = . . .`
+
+-}
 ch : Operator o
 ch =
     NextChar
 
-{-| 3. `re` -}
+{-| 3. `re`
+
+This operator tries to match using symbols-driven regular expression (the only allowed in `peg.js`). The regular expression may have some description provided, then this description will be used to describe a failure. On the other branches, this operator logic is similar to the one before.
+
+* **Parser example:** `Parser.startWith <| some (re "[^f-o]")`
+* **PEG syntax:** `[<symbols>]`, `[^<symbols>]`, `[<symbol_1>-<symbol_n>]`, `[^<symbol_1>-<symbol_n>]`, `"<string>"i`, `'<string>'i`
+* **PEG example:** `start = [^f-o]+`
+
+-}
+-- FIXME: Pass regular expression options to `re`
 re : String -> Operator o
 re regex_ =
     Regex regex_ Nothing
@@ -475,74 +509,218 @@ redesc : String -> String -> Operator o
 redesc regex_ description =
     Regex regex_ (Just description)
 
-{-| 4. `seqnc` -}
+{-| 4. `seqnc`
+
+This operator executes a sequence of other operators of any kind, and this sequence may have any (but finite) length. If one of the given operators failed during execution, the sequence is interrupted immediately and the exception is thrown. If all operators performed with no errors, an array of their results is returned.
+
+* **Parser example:** `Parser.startWith <| seqnc [ ch, match "oo", maybe (match "bar") ]`
+* **PEG syntax:** `<expression_1> <expression_2> ...`
+* **PEG example:** `start = . 'oo' 'bar'?`
+
+ -}
 seqnc : List (Operator o) -> Operator o
 seqnc operators =
     Sequence operators
 
-{-| 5. `choice` -}
+{-| 5. `choice`
+
+This operator works similarly to pipe (`|`) operator in regular expressions – it tries to execute the given operators one by one, returning (actually, without advancing) the parsing position back in the end of each iteration.  If there was a success when one of these operators was executed, `choice` immediately exits with the successful result. If all operators failed, `choice` throws a `MatchFailed` exception.
+
+* **Parser example:**
+    `Parser.startWith <| seqnc`
+    `    [ ch, choice [ match "aa", match "oo", match "ee" ], ch ]`
+* **PEG syntax:** `<expression_1> / <expression_2> / ...`
+* **PEG example:** `start = . ('aa' / 'oo' / 'ee') .`
+
+ -}
 choice : List (Operator o) -> Operator o
 choice operators =
     Choice operators
 
-{-| 6. `maybe` -}
+{-| 6. `maybe`
+
+This operator ensures that some other operator at least tried to be executed, but absorbs the failure if it happened. In other words, it makes other operator optional. `safe` function is the internal function to absorb operator failures and execute some callback if failure happened.
+
+* **Parser example:**
+    `Parser.startWith <|`
+    `    seqnc [ maybe (match "f"),`
+    `          , maybe (seqnc [ ch, ch ])`
+    `          ]`
+* **PEG syntax:** `<expression>?`
+* **PEG example:** `start = 'f'? (. .)?`
+
+-}
 maybe : Operator o -> Operator o
 maybe operator =
     Maybe_ operator
 
-{-| 7. `any` -}
+{-| 7. `any`
+
+This operator executes other operator the most possible number of times, but even no matches at all will suffice as no failure. `any` operator also returns an array of matches, but the empty one if no matches succeeded.
+
+* **Parser example:**
+    `Parser.startWith <| seqnc [ some (match "f"), any (match "o") ]`
+* **PEG syntax:** `<expression>*`
+* **PEG example:** `start = 'f'+ 'o'*`
+
+-}
 any : Operator o -> Operator o
 any operator =
     Any operator
 
-{-| 8. `some` -}
+{-| 8. `some`
+
+This operator executes other operator the most possible number of times (but at least one) until it fails (without failing the parser). If it failed at the moment of a first call – then the whole parser failed. If same operator failed during any of the next calls, failure is absorbed without advancing parsing position further. This logic is often called "one or more" and works the same way in regular expressions. In our case, we achieve the effect by calling the operator itself normally and then combining it with immediately-called`any` ("zero or more") operator described just below.
+
+`some` operator returns the array of matches on success, with at least one element inside.
+
+* **Parser example:** `Parser.startWith <| seqnc [ maybe (match "f"), some ch ]`
+* **PEG syntax:** `<expression>+`
+* **PEG example:** `start = 'f'? .+`
+
+-}
 some : Operator o -> Operator o
 some operator =
     Some operator
 
-{-| 9. `and` -}
+{-| 9. `and`
+
+`and` operator executes other operator almost normally, but returns an empty string if it matched and failures expecting end-of-input if it failed. Also, everything happens without advancing the parser position. `pos` variable here is global parser position and it is rolled back after the execution of inner operator. `nr` flag is 'no-report' flag, it is used to skip storing parsing errors data (like their postions), or else they all stored in order of appearance, even if they don't lead to global parsing failure.
+
+It's important to say here that, honestly speaking, yes, `peg.js-fn` is aldo driven by exceptions, among with postponed function. One special class of exception, named `MatchFailed`. It is raised on every local parse failure, but sometimes it is absorbed by operators wrapping it (i.e. `safe` function contains `try {...} catch(MatchFailed) {...}` inside), and sometimes their logic tranfers it to the top (global) level which causes the final global parse failure and parsing termination. The latter happens once and only once for every new input/parser execution, of course.
+
+* **Parser example:** `Parser.startWith <| seqnc [ and (match "f"), match "foo" ]`
+* **PEG syntax:** `&<expression>`
+* **PEG example:** `start = &'f' 'foo'`
+
+-}
 and : Operator o -> Operator o
 and operator =
     And operator
 
-{-| 10. `not` -}
+{-| 10. `not`
+
+`not` operator acts the same way as the `and` operator, but in a bit inverse manner. It also ensures not to advance the position, but returns an empty string when match failed and fails with expecting end-of-input, if match succeeded.
+
+* **Parser example:** `Parser.startWith <| seqnc [ not (match "g"), match "foo" ]`
+* **PEG syntax:** `!<expression>`
+* **PEG example:** `start = !'g' 'foo'`
+
+-}
 not : Operator o -> Operator o
 not operator =
     Not operator
 
-{-| 11. `call` -}
+{-| 11. `call`
+
+This operator is different from others, because it just wraps a rule and calls its first wrapping operator immediately and nothing more. It only used to provide better readibility of parser code, so you (as well as parser itself) may link to any rule using `rules.<your_rule>` reference.
+
+* **syntax:** `<rule_name> = <expression>`
+* **example:**
+    `space = " "`
+    `foo "three symbols" = . . .`
+    `start = !space foo !space`
+* **code:**
+    `rules.space = function() { return (match(' '))(); };`
+    `rules.foo = function() { return (as('three symbols', seqnc(ch(), ch(), ch())))(); };`
+    `rules.start = function() { return (seqnc(not(ref(rules.space)), ref(rules.foo), not(ref(rules.space))))(); };`
+
+...And if we plan to call some rule from some operator with `rules.<rule_name>` reference, we need to make current context accessible from the inside. Context is those variables who accessible at this nesting level and above (nesting level is determined with brackets in grammar). This provided with some complex tricks, but we'll keep them for those who want to know all the details – if you're one of them, the next chapter is completely yours.
+
+* **example:**
+    `fo_rule = 'fo'`
+    `start = fo_rule 'o'`
+* **code:**
+    `rules.fo_rule = function() { return (match('fo'))(); };`
+    `rules.start = function() { return (seqnc(ref(rules.fo_rule), match('o'))(); };`
+
+-}
+-- FIXME: make `call` accept the rule from the RulesList
 call : RuleName -> Operator o
 call ruleName =
     Call ruleName
 
-{-| 12. `action` -}
+{-| 12. `action`
+
+In `peg.js` any rule or sequence may have some javascript code assigned to it, so it will be executed on a successful match event, and in latter case this code has the ability to manipulate the match result it receives and to return the caller something completely different instead.
+
+Commonly the operators which themselves execute some other, inner operators, (and weren't overriden) return the array containing their result values, if succeeded. Other operators return plain values. With `action`, both these types of results may be replaced with any crap developer will like.
+
+By the way, the code also receives all the values returned from labelled operators (on the same nesting level and above) as the variables with the names equal to the labels. See more information on labelling below.
+
+* **Parser example:**
+    `Parser.startWith <| seqnc [ match "fo"`
+    `    , action ch (\state _ -> Pass state.offset )`
+* **PEG syntax:** `<expression> { <javascript-code> }`
+* **PEG.js example:** `start = 'fo' (. { return offset(); })`
+
+-}
+-- FIXME: actions should have access to a position, check the examples.
 action : Operator o -> UserCode o -> Operator o
 action operator userCode =
     Action operator userCode
 
-{-| 13. `pre` -}
+{-| 13. `pre`
+
+The rule in `peg.js` also may be prefixed/precessed with some JavaScript code which is executed before running all the inner rule operators. This JavaScript code may check some condition(s) and decide, if it's ever has sense to run this rule, with returning a boolean value. Of course, this code does not advances the parser position.
+
+* **Parser example:** `Parser.startWith <| seqnc [ pre (\_ -> Continue), match "foo" ]`
+* **PEG syntax:** `& { <javascript-code> }`
+* **PEG.js example:** `start = &{ return true; } 'foo'`
+
+-}
 pre : UserPrefixCode o -> Operator o
 pre userCode =
     PreExec userCode
 
-{-| 14. `xpre` -}
+{-| 14. `xpre`
+
+Same as `pre` operator, but in this case, reversely, `false` returned says it's ok to execute the rule this operator precedes.
+
+* **Parser example:** `Parser.startWith <| seqnc [ xpre (\_ -> Halt), match "foo" ]`
+* **PEG.js syntax:** `! { <javascript-code> }`
+* **PEG example:** `start = !{ return false; } 'foo'`
+
+ -}
 xpre : UserPrefixCode o -> Operator o
 xpre userCode =
     NegPreExec userCode
 
-{-| 15. `text` -}
+{-| 15. `text`
+
+`text` operator executes the other operator inside as normally, but always returns the matched portion of input text instead of what the inner operator decided to return. If there will be failures during the inner operator parsing process, return code will not ever be reached.
+
+* **Parser example:** `Parser.startWith <| text (seqnc [ ch, ch, ch ]);`
+* **PEG syntax:** `$<expression>`
+* **PEG example:** `start = $(. . .)`
+
+-}
 text : Operator o -> Operator o
 text operator =
     TextOf operator
 
-{-| 16. `label` -}
+{-| 16. `label`
+
+`label` operator allows to tag some expression with a name, which makes it's result to be accessible to the JavaScript code through variable having the exact same name. Since you may execute JavaScript code in the end of any sequence operator `sqnc` by wrapping it with `action` operator, you may get access to these values from everywhere, and only bothering if current nesting level has access to the label you want to use.
+
+* **Parser example:** `Parser.startWith action(seqnc(label('a', ch()), match('oo')), function(a) { return a + 'bb'});`
+* **PEG syntax:** `<name>:<expression>`
+* **PEG example:** `start = a:. 'oo' { return a + 'bb'; }`
+
+-}
+-- FIXME: check the examples
 label : String -> Operator o -> Operator o
 label name operator =
     Label name operator
 
--- rule : RuleName -> Operator o -> Operator o
--- rule ruleName op =
---     Rule ruleName op
+{-
+The final operator creates an alias for a rule so it will be referenced with another name in error messages. And it's the only purpose of this one, the last one.
+
+* **syntax:** `<rule_name> "<alias>" = <expression>`
+* **example:** `start "blah" = 'bar'`
+* **code:** `rules.start = function() { return (as('blah', match('bar')))(); };`
+
+-}
 
 -- OPERATORS EXECUTION
 
