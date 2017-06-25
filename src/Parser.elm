@@ -53,22 +53,22 @@ As you probably mentioned, the Rule may start only with one Operator, but then i
 To define your own Rules, you'll need [Operators](#Operators), such as `choice`,
 `seqnc` (short for _sequence_) or `match`. Actually, all these Operators are inspired with [PEG Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and every rule has the equivalent there, with several extensions. The ones we have out of the box are:
 
-    * `match String`: match the given string;
-    * `ch` : match exactly one character, no matter which;
-    * `re String`: match the given regular expression;
-    * `call String`: call the Rule by its name (we'll cover it below);
-    * `seqnc (List Operator)`: perform the listed operators one by one;
-    * `choice (List Operator)`: try the listed operators one by one, unless one matches;
-    * `maybe Operator`: try to perform the given operator and continue even if it fails;
-    * `any Operator`: try to perform the given operator several times and continue even if it fails;
-    * `some Operator`: try to perform the given operator several times and continue only if matched at least one time;
-    * `and Operator`: require the given operator to match, but do not advance the position after that;
-    * `not Operator`: require the given operator not to match, but do not advance the position after that;
-    * `action Operator UserCode`: execute the operator, then execute [the user code](#Actions) to let user determine if it actually matches, and also return any value user returned from the code;
-    * `pre Operator UserPrefixCode`: execute the operator, then execute [the user code](#Actions) to let user determine if it actually matches, do not advance the position after that;
-    * `xpre Operator UserPrefixCode`: execute the operator, then execute [the user code](#Actions) and match only if the code failed, do not advance the position after that;
-    * `text Operator`: execute the operator, omit the results returned from the inside and return only the matched text as a string;
-    * `label String Operator`: save the result of the given Operator in context under the given label, this is useful for getting access to this value from [user code](#Actions);
+    1. `match String`: match the given string;
+    2. `ch` : match exactly one character, no matter which;
+    3. `re String`: match the given regular expression;
+    4. `seqnc (List Operator)`: perform the listed operators one by one, also the way to nest things;
+    5. `choice (List Operator)`: try the listed operators one by one, unless one matches;
+    6. `maybe Operator`: try to perform the given operator and continue even if it fails;
+    7. `any Operator`: try to perform the given operator several times and continue even if it fails;
+    8. `some Operator`: try to perform the given operator several times and continue only if matched at least one time;
+    9. `and Operator`: require the given operator to match, but do not advance the position after that;
+    10. `not Operator`: require the given operator not to match, but do not advance the position after that;
+    11. `call String`: call the Rule by its name (we'll cover it below);
+    12. `action Operator UserCode`: execute the operator, then execute [the user code](#Actions) to let user determine if it actually matches, and also return any value user returned from the code;
+    13. `pre Operator UserPrefixCode`: execute the operator, then execute [the user code](#Actions) to let user determine if it actually matches, do not advance the position after that;
+    14. `xpre Operator UserPrefixCode`: execute the operator, then execute [the user code](#Actions) and match only if the code failed, do not advance the position after that;
+    15. `text Operator`: execute the operator, omit the results returned from the inside and return only the matched text as a string;
+    16. `label String Operator`: save the result of the given Operator in context under the given label, this is useful for getting access to this value from [user code](#Actions);
 
 For the details on every Operator, see the [Operators](#Operators) section below.
 
@@ -129,10 +129,16 @@ This Parser implementation was inspired with the [functional version of `peg-js`
 
 # Actions
 
-Actions are the functions allowed to be executed when any [Operator](#Operators) was performed and they are allowed to replace its result with some value and/or report the success or failure of this Operator instead of the actual things happened in the process.
+Actions are the functions allowed to be executed when any inner [Operator](#Operators) was performed and to replace its result with some value and/or report the success or failure of this Operator instead of the actual things happened during the process.
 
-[`UserCode`](TODO) is the alias for a function `(o -> State o -> (ActionResult o))`.
-[`UserPrefixCode`](TODO) is the alias for a function `(State o -> PrefixActionResult)`.
+There are three operators designed explicitly to call actions: `action` itself, `pre` and `xpre`. Also there is one which cancels the effect of the inner actions: `text`. And the one, which allows you to save some value in context and reuse it later (but inside the same branch of operators): `label`.
+
+    * [`UserCode`](TODO) is the alias for a function `ReturnType -> State -> ActionResult ReturnType`.
+    * [`UserPrefixCode`](TODO) is the alias for a function `State -> PrefixActionResult`.
+
+Let's see how you may change the flow of parsing with Actions:
+
+TODO
 
 # Custom Parsers
 
@@ -216,7 +222,6 @@ TODO!
     , ch
     , re
     , redesc
-    , call
     , seqnc
     , choice
     , maybe
@@ -224,6 +229,7 @@ TODO!
     , some
     , and
     , not
+    , call
     , action
     , pre
     , xpre
@@ -449,90 +455,90 @@ type ParseResult o =
 
 -- OPERATORS
 
-{-| TODO -}
-ch : Operator o
-ch =
-    NextChar
-
-{-| TODO -}
+{-| 1. `match` -}
 match : String -> Operator o
 match subject =
     Match subject
 
-{-| TODO -}
-choice : List (Operator o) -> Operator o
-choice operators =
-    Choice operators
+{-| 2. `ch` -}
+ch : Operator o
+ch =
+    NextChar
 
-{-| TODO -}
-seqnc : List (Operator o) -> Operator o
-seqnc operators =
-    Sequence operators
-
-{-| TODO -}
-maybe : Operator o -> Operator o
-maybe operator =
-    Maybe_ operator
-
-{-| TODO -}
-text : Operator o -> Operator o
-text operator =
-    TextOf operator
-
-{-| TODO -}
-any : Operator o -> Operator o
-any operator =
-    Any operator
-
-{-| TODO -}
-some : Operator o -> Operator o
-some operator =
-    Some operator
-
-{-| TODO -}
-and : Operator o -> Operator o
-and operator =
-    And operator
-
-{-| TODO -}
-not : Operator o -> Operator o
-not operator =
-    Not operator
-
-{-| TODO -}
-action : Operator o -> UserCode o -> Operator o
-action operator userCode =
-    Action operator userCode
-
-{-| TODO -}
-pre : UserPrefixCode o -> Operator o
-pre userCode =
-    PreExec userCode
-
-{-| TODO -}
-xpre : UserPrefixCode o -> Operator o
-xpre userCode =
-    NegPreExec userCode
-
-{-| TODO -}
-label : String -> Operator o -> Operator o
-label name operator =
-    Label name operator
-
-{-| TODO -}
-call : RuleName -> Operator o
-call ruleName =
-    Call ruleName
-
-{-| TODO -}
+{-| 3. `re` -}
 re : String -> Operator o
 re regex_ =
     Regex regex_ Nothing
 
-{-| TODO -}
+{-| 3a. `redesc` -}
 redesc : String -> String -> Operator o
 redesc regex_ description =
     Regex regex_ (Just description)
+
+{-| 4. `seqnc` -}
+seqnc : List (Operator o) -> Operator o
+seqnc operators =
+    Sequence operators
+
+{-| 5. `choice` -}
+choice : List (Operator o) -> Operator o
+choice operators =
+    Choice operators
+
+{-| 6. `maybe` -}
+maybe : Operator o -> Operator o
+maybe operator =
+    Maybe_ operator
+
+{-| 7. `any` -}
+any : Operator o -> Operator o
+any operator =
+    Any operator
+
+{-| 8. `some` -}
+some : Operator o -> Operator o
+some operator =
+    Some operator
+
+{-| 9. `and` -}
+and : Operator o -> Operator o
+and operator =
+    And operator
+
+{-| 10. `not` -}
+not : Operator o -> Operator o
+not operator =
+    Not operator
+
+{-| 11. `call` -}
+call : RuleName -> Operator o
+call ruleName =
+    Call ruleName
+
+{-| 12. `action` -}
+action : Operator o -> UserCode o -> Operator o
+action operator userCode =
+    Action operator userCode
+
+{-| 13. `pre` -}
+pre : UserPrefixCode o -> Operator o
+pre userCode =
+    PreExec userCode
+
+{-| 14. `xpre` -}
+xpre : UserPrefixCode o -> Operator o
+xpre userCode =
+    NegPreExec userCode
+
+{-| 15. `text` -}
+text : Operator o -> Operator o
+text operator =
+    TextOf operator
+
+{-| 16. `label` -}
+label : String -> Operator o -> Operator o
+label name operator =
+    Label name operator
 
 -- rule : RuleName -> Operator o -> Operator o
 -- rule ruleName op =
