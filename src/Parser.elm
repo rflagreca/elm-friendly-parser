@@ -238,6 +238,8 @@ TODO!
 
 @docs ActionResult
     , PrefixActionResult
+    , UserCode
+    , UserPrefixCode
 
 # Custom Parser Requirements
 
@@ -261,21 +263,21 @@ type alias Parser o = P.Parser o
 -- INITIALIZATION
 
 {-| TODO -}
-init : Adapter o -> Parser o
+init : P.Adapter o -> P.Parser o
 init = P.init
 
 {-| TODO -}
-start : Operator o -> Adapter o -> Parser o
+start : P.Operator o -> P.Adapter o -> P.Parser o
 start = P.start
 
 {-| TODO -}
-startWith : Operator o -> Parser o -> Parser o
+startWith : P.Operator o -> P.Parser o -> P.Parser o
 startWith = P.startWith
 
 -- PARSING
 
 {-| TODO -}
-parse : String -> Parser o -> ( ParseResult o, Maybe Position )
+parse : String -> P.Parser o -> ( P.ParseResult o, Maybe P.Position )
 parse = P.parse
 
 -- PARSE RESULT
@@ -298,23 +300,23 @@ type Sample o = P.Sample o
 -- RULES
 
 {-| TODO -}
-withRules : RulesList o -> Parser o -> Parser o
+withRules : P.RulesList o -> P.Parser o -> P.Parser o
 withRules = P.withRules
 
 {-| TODO -}
-setStartRule : RuleName -> Parser o -> Parser o
+setStartRule : P.RuleName -> P.Parser o -> P.Parser o
 setStartRule = P.setStartRule
 
 {-| TODO -}
-getStartRule : Parser o -> Maybe (Operator o)
+getStartRule : P.Parser o -> Maybe (P.Operator o)
 getStartRule = P.getStartRule
 
 {-| TODO -}
-getRule : RuleName -> Parser o -> Maybe (Operator o)
+getRule : P.RuleName -> P.Parser o -> Maybe (P.Operator o)
 getRule = P.getRule
 
 {-| TODO -}
-noRules : Rules o
+noRules : P.Rules o
 noRules = P.noRules
 
 {-| TODO -}
@@ -337,7 +339,7 @@ type RulesList = P.RulesList
 * **PEG example:** `start = . 'oo'`
 
 -}
-match : String -> Operator o
+match : String -> P.Operator o
 match = P.match
 
 
@@ -348,7 +350,7 @@ match = P.match
 * **PEG example:** `start = . . .`
 
 -}
-ch : Operator o
+ch : P.Operator o
 ch = P.ch
 
 
@@ -361,12 +363,12 @@ ch = P.ch
 
 -}
 -- FIXME: Pass regular expression options to `re`
-re : String -> Operator o
+re : String -> P.Operator o
 re = P.re
 
 
 {-| TODO -}
-redesc : String -> String -> Operator o
+redesc : String -> String -> P.Operator o
 redesc = P.redesc
 
 
@@ -377,7 +379,7 @@ redesc = P.redesc
 * **PEG example:** `start = . 'oo' 'bar'?`
 
  -}
-seqnc : List (Operator o) -> Operator o
+seqnc : List (P.Operator o) -> P.Operator o
 seqnc = P.seqnc
 
 
@@ -390,7 +392,7 @@ seqnc = P.seqnc
 * **PEG example:** `start = . ('aa' / 'oo' / 'ee') .`
 
  -}
-choice : List (Operator o) -> Operator o
+choice : List (P.Operator o) -> P.Operator o
 choice = P.choice
 
 
@@ -406,7 +408,7 @@ choice = P.choice
 * **PEG example:** `start = 'f'? (. .)?`
 
 -}
-maybe : Operator o -> Operator o
+maybe : P.Operator o -> P.Operator o
 maybe = P.maybe
 
 
@@ -418,7 +420,7 @@ maybe = P.maybe
 * **PEG example:** `start = 'f'+ 'o'*`
 
 -}
-any : Operator o -> Operator o
+any : P.Operator o -> P.Operator o
 any = P.any
 
 
@@ -431,7 +433,7 @@ any = P.any
 * **PEG example:** `start = 'f'? .+`
 
 -}
-some : Operator o -> Operator o
+some : P.Operator o -> P.Operator o
 some = P.some
 
 
@@ -444,7 +446,7 @@ It's important to say here that, honestly speaking, yes, `peg.js-fn` is aldo dri
 * **PEG example:** `start = &'f' 'foo'`
 
 -}
-and : Operator o -> Operator o
+and : P.Operator o -> P.Operator o
 and = P.and
 
 {-| `not` operator acts the same way as the `and` operator, but in a bit inverse manner. It also ensures not to advance the position, but returns an empty string when match failed and fails with expecting end-of-input, if match succeeded.
@@ -454,7 +456,7 @@ and = P.and
 * **PEG example:** `start = !'g' 'foo'`
 
 -}
-not : Operator o -> Operator o
+not : P.Operator o -> P.Operator o
 not = P.not
 
 {-| This operator is different from others, because it just wraps a rule and calls its first wrapping operator immediately and nothing more. It only used to provide better readibility of parser code, so you (as well as parser itself) may link to any rule using `rules.<your_rule>` reference.
@@ -479,7 +481,7 @@ not = P.not
     `rules.start = function() { return (seqnc(ref(rules.fo_rule), match('o'))(); };`
 
 -}
-call : RuleName -> Operator o
+call : P.RuleName -> P.Operator o
 call = P.call
 
 {-| 12. `action`
@@ -497,7 +499,7 @@ By the way, the code also receives all the values returned from labelled operato
 * **PEG.js example:** `start = 'fo' (. { return offset(); })`
 
 -}
-action : Operator o -> UserCode o -> Operator o
+action : P.Operator o -> P.UserCode o -> P.Operator o
 action = P.action
 
 {-| 13. `pre`
@@ -509,7 +511,7 @@ The rule in `peg.js` also may be prefixed/precessed with some JavaScript code wh
 * **PEG.js example:** `start = &{ return true; } 'foo'`
 
 -}
-pre : UserPrefixCode o -> Operator o
+pre : P.UserPrefixCode o -> P.Operator o
 pre = P.pre
 
 {-| 14. `xpre`
@@ -521,7 +523,7 @@ Same as `pre` operator, but in this case, reversely, `false` returned says it's 
 * **PEG example:** `start = !{ return false; } 'foo'`
 
 -}
-xpre : UserPrefixCode o -> Operator o
+xpre : P.UserPrefixCode o -> P.Operator o
 xpre = P.xpre
 
 {-| `text` operator executes the other operator inside as normally, but always returns the matched portion of input text instead of what the inner operator decided to return. If there will be failures during the inner operator parsing process, return code will not ever be reached.
@@ -531,7 +533,7 @@ xpre = P.xpre
 * **PEG example:** `start = $(. . .)`
 
 -}
-text : Operator o -> Operator o
+text : P.Operator o -> P.Operator o
 text = P.text
 
 {-| `label` operator allows to tag some expression with a name, which makes it's result to be accessible to the JavaScript code through variable having the exact same name. Since you may execute JavaScript code in the end of any sequence operator `sqnc` by wrapping it with `action` operator, you may get access to these values from everywhere, and only bothering if current nesting level has access to the label you want to use.
@@ -541,7 +543,7 @@ text = P.text
 * **PEG example:** `start = a:. 'oo' { return a + 'bb'; }`
 
 -}
-label : String -> Operator o -> Operator o
+label : String -> P.Operator o -> P.Operator o
 label = P.label
 
 {-
@@ -556,13 +558,13 @@ The final operator creates an alias for a rule so it will be referenced with ano
 -- ACTIONS
 
 {-| TODO -}
-type ActionResult o = P.ActionResult o
+type ActionResult = P.ActionResult
 {-| TODO -}
 type PrefixActionResult = P.PrefixActionResult
 {-| TODO -}
-type UserCode o = P.UserCode o
+type UserCode = P.UserCode
 {-| TODO -}
-type UserPrefixCode = P.UserPrefixCode
+type alias UserPrefixCode o = P.UserPrefixCode o
 
 -- CUSTOM PARSER REQUIREMENTS
 
@@ -570,17 +572,18 @@ type UserPrefixCode = P.UserPrefixCode
 is enclosed into another sequence and matched, the results are stored in the list. When the rule
 matched, we need to store the name of the rule, so it's also stored.
 -}
-type InputType o = P.InputType o
+type InputType = P.InputType
 
 {-| A custom user function which specifies for every Parser the converter from Source Type
 to the Resulting Type (`o`). TODO
 -}
-type Adapter o = P.Adapater o
+type alias Adapter o = P.Adapter o
 
 -- OPERATOR AND STATE
 
 {-| TODO -}
-type Operator o = P.Operator o
+--type alias Operator o = P.Operator o
+type Operator = P.Operator
 
 {-|
 
