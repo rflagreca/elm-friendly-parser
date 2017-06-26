@@ -1,13 +1,14 @@
 module Core.Operator exposing
     ( Operator
-    , RuleName, Rule, Grammar, Rules
+    , RuleName, Rule, Grammar, Rules, noRules
     , ch, match, choice, seqnc, maybe, text, any, some, and, not
     , action, pre, xpre, label, call, re, redesc
     , execute
+    , getCurrentChar
     )
 
 import Dict exposing (Dict)
-import Regex exposing (..)
+import Regex
 
 import Core.State exposing (State)
 import Core.Adapter exposing (Adapter)
@@ -405,6 +406,9 @@ execRegex regex maybeDesc ctx =
             Nothing -> ctx |> failedRE description
 
 -- UTILS
+
+noRules : Grammar o
+noRules = Dict.empty
 
 matchedWith : o -> Context o -> OperatorResult o
 matchedWith output ctx =

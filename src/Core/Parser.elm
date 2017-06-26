@@ -1,7 +1,7 @@
 module Core.Parser exposing
     ( Parser, init, start, startWith, parse
     -- , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
-    , withRules, setStartRule, getStartRule, getRule, noRules --, RuleName, Rules, RulesList
+    , withRules, setStartRule, getStartRule, getRule --, noRules, RuleName, Rules, RulesList
     -- , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
     -- , InputType(..)
     -- , Adapter
@@ -9,16 +9,23 @@ module Core.Parser exposing
     )
 
 import Dict exposing (..)
-import Regex
 
 import Core.Adapter exposing (Adapter)
-import Core.Operator exposing (Operator, Rules, execute)
+import Core.Operator exposing
+    ( Operator
+    , execute
+    , Rules
+    , RuleName
+    , Grammar
+    , Rules
+    , noRules
+    , getCurrentChar)
 import Core.State as State exposing (State)
 import Core.Result exposing (Position, FailureReason(..), Expectation(..), Sample(..))
 
 type alias Parser o =
     { adapt: Adapter o
-    , rules: Rules o
+    , rules: Grammar o
     , startRule: String
     }
 
@@ -28,8 +35,6 @@ init adapter =
     , rules = noRules
     , startRule = "start"
     }
-
-type alias Context o = ( Parser o, State o )
 
 type ParseResult o =
       Matched o
@@ -54,19 +59,16 @@ parse input parser =
                     case parseResult of
                         Matched success ->
                             if lastState.position == (String.length input) then
-                                ( parseResult, Nothing )
+                                parseResult
                             else
                                 ( Failed (ByExpectation
                                     (ExpectedEndOfInput, (GotValue (getCurrentChar lastCtx))))
                                 , Just (findPosition lastState)
                                 )
-                        Failed _ -> ( parseResult, Just (findPosition lastState) )
+                        Failed _ _ -> ( parseResult, Just (findPosition lastState) )
             Nothing -> ( Failed NoStartRule, Nothing )
 
-noRules : Rules o
-noRules = Dict.empty
-
-withRules : RulesList o -> Parser o -> Parser o
+withRules : Rules o -> Parser o -> Parser o
 withRules rules parser =
     { parser | rules = Dict.fromList rules }
     -- , startRule = case List.head rules of
@@ -102,29 +104,29 @@ getRule name parser =
 
 -- UTILS
 
-extractParseResult : OperatorResult o -> ParseResult o
-extractParseResult opResult =
-    Tuple.first opResult
+-- extractParseResult : OperatorResult o -> ParseResult o
+-- extractParseResult opResult =
+--     Tuple.first opResult
 
-extractContext : OperatorResult o -> Context o
-extractContext opResult =
-    Tuple.second opResult
+-- extractContext : OperatorResult o -> Context o
+-- extractContext opResult =
+--     Tuple.second opResult
 
-opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
-opResultToMaybe ( parseResult, ctx ) =
-    ( parseResultToMaybe parseResult, ctx )
+-- opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
+-- opResultToMaybe ( parseResult, ctx ) =
+--     ( parseResultToMaybe parseResult, ctx )
 
 parseResultToMaybe : ParseResult o -> Maybe o
 parseResultToMaybe result =
     case result of
         Matched v -> Just v
-        Failed _ -> Nothing
+        Failed _ _ -> Nothing
 
 parseResultToResult : ParseResult o -> Result (FailureReason o) o
 parseResultToResult result =
     case result of
         Matched v -> Ok v
-        Failed f -> Err f
+        Failed f _ -> Err f
 
 findPosition : State o -> Position
 findPosition state =
