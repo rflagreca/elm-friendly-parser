@@ -1,6 +1,9 @@
 module Core.Operator exposing
-    ( ch, match, choice, seqnc, maybe, text, any, some, and, not
+    ( Operator
+    , RuleName, Rule, Grammar, Rules
+    , ch, match, choice, seqnc, maybe, text, any, some, and, not
     , action, pre, xpre, label, call, re, redesc
+    , execute
     )
 
 import Dict exposing (Dict)
@@ -23,8 +26,9 @@ import Core.Result exposing
 import Core.Adapter exposing (InputType(..))
 
 type alias RuleName = String
-type alias Rules o = Dict RuleName (Operator o)
-type alias Grammar o = List ( RuleName, Operator o )
+type alias Rule o = ( RuleName, Operator o )
+type alias Grammar o = Dict RuleName (Operator o)
+type alias Rules o = List (Rule o)
 
 type StepResult o = Matched o | Failed (FailureReason o)
 
@@ -152,7 +156,7 @@ execute op ctx =
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
     in
         if (state.position >= state.inputLength) then
             ctx |> failedBy ExpectedAnything GotEndOfInput
@@ -162,7 +166,7 @@ execNextChar ctx =
 execMatch : String -> Context o -> OperatorResult o
 execMatch expectation ctx =
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
         inputLength = state.inputLength
         expectationLength = String.length expectation
     in
@@ -274,14 +278,14 @@ execMaybe op ctx =
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
         prevPos = state.position
         result = execute op ctx
     in
         case result of
             ( Matched s, newCtx ) ->
                 let
-                    ( _, newState ) = newCtx
+                    ( _, _, newState ) = newCtx
                 in
                     newCtx |> matched
                         (newState.input |> String.slice prevPos newState.position)
@@ -309,7 +313,7 @@ execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
 execAction op userCode ctx =
     let
         ( result, newCtx ) = (execute op ctx)
-        ( _, newState ) = newCtx
+        ( _, _, newState ) = newCtx
          -- we forget all the data left inside the "closure" and take only the new position
         resultingCtx = ctx |> loadPosition newCtx
     in
@@ -324,7 +328,7 @@ execAction op userCode ctx =
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
         result = (userCode state)
     in
         case result of
@@ -334,7 +338,7 @@ execPre userCode ctx =
 execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
 execNegPre userCode ctx =
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
         result = (userCode state)
     in
         case result of
@@ -349,11 +353,11 @@ execLabel name op ctx =
             case result of
                 Matched v ->
                     let
-                        ( parser, newState ) = newCtx
+                        ( adapter, grammar, newState ) = newCtx
                         updatedState =
                             { newState | values = newState.values |> Dict.insert name v }
                     in
-                        ( parser, updatedState )
+                        ( adapter, grammar, updatedState )
                 Failed _ -> newCtx
     in
         ( result, updatedCtx )
@@ -365,9 +369,9 @@ execCall ruleName ctx =
 execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
 execCallAs ruleAlias realRuleName ctx =
     let
-        ( parser, _ ) = ctx
+        ( _, grammar, _ ) = ctx
     in
-        case (getRule realRuleName parser) of
+        case (getRule realRuleName grammar) of
             Just op -> (execute op ctx) |> addRuleToResult ruleAlias
             Nothing -> ctx |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar ctx)
 
@@ -379,7 +383,7 @@ execRegex : String -> Maybe String -> Context o -> OperatorResult o
 execRegex regex maybeDesc ctx =
     -- FIXME: cache all regular expressions with Regex.Regex instances
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
         regexInstance = Regex.regex regex
         matches = Regex.find (Regex.AtMost 1) regexInstance
                     (String.slice state.position state.inputLength state.input)
@@ -409,23 +413,23 @@ matchedWith output ctx =
 matched : String -> Context o -> OperatorResult o
 matched val ctx =
     let
-        ( parser, _ ) = ctx
+        ( adapter, _, _ ) = ctx
     in
-        matchedWith (parser.adapt (AValue val)) ctx
+        matchedWith (adapter (AValue val)) ctx
 
 matchedList : List o -> Context o -> OperatorResult o
 matchedList val ctx =
     let
-        ( parser, _ ) = ctx
+        ( adapter, _, _ ) = ctx
     in
-        matchedWith (parser.adapt (AList val)) ctx
+        matchedWith (adapter (AList val)) ctx
 
 matchedRule : RuleName -> o -> Context o -> OperatorResult o
 matchedRule ruleName value ctx =
     let
-        ( parser, _ ) = ctx
+        ( adapter, parser, _ ) = ctx
     in
-        matchedWith (parser.adapt (ARule ruleName value)) ctx
+        matchedWith (adapter (ARule ruleName value)) ctx
 
 -- matchedFlatList : List o -> Context o -> OperatorResult o
 -- matchedFlatList val ctx =
@@ -467,16 +471,17 @@ notImplemented ctx =
 advanceBy : Int -> Context o -> Context o
 advanceBy count ctx =
     let
-        ( parser, state ) = ctx
+        ( adapter, grammar, state ) = ctx
     in
-        ( parser
+        ( adapter
+        , grammar
         , { state | position = state.position + count }
         )
 
 getNextSubstring : Context o -> Int -> Int -> String
 getNextSubstring ctx shift count =
     let
-        ( _, state ) = ctx
+        ( _, _, state ) = ctx
     in
         String.slice (state.position + shift) (state.position + shift + count) state.input
 
@@ -505,8 +510,8 @@ getRule name grammar =
     Dict.get name grammar
 
 loadPosition : Context o -> Context o -> Context o
-loadPosition ( _, loadFrom ) ( parser, addTo ) =
-    ( parser, { addTo | position = loadFrom.position } )
+loadPosition ( _, _, loadFrom ) ( adapter, grammar, addTo ) =
+    ( adapter, grammar, { addTo | position = loadFrom.position } )
 
 type Step o v = Next ( Operator o, v ) | StopWith v | Stop
 
@@ -532,6 +537,13 @@ chain stepFn initialOp initialVal initialCtx =
                     )
     in
         unfold initialOp initialCtx initialVal
+
+-- concat : StepResult o -> StepResult o -> Context o -> OperatorResult o
+-- concat resultOne resultTwo inContext =
+--     case ( resultOne, resultTwo ) of
+--         ( Matched vOne, Matched vTwo ) ->
+--             matchedList [ vOne, vTwo ] inContext
+--         _ -> ( resultTwo, inContext )
 
 keepOnlyMatches : List (StepResult o) -> List o
 keepOnlyMatches parseResults =

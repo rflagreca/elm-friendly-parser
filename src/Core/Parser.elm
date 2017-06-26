@@ -1,15 +1,20 @@
 module Core.Parser exposing
     ( Parser, init, start, startWith, parse
-    , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
-    , withRules, setStartRule, getStartRule, getRule, noRules, RuleName, Rules, RulesList
-    , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
-    , InputType(..)
-    , Adapter
-    , Operator(..), State
+    -- , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
+    , withRules, setStartRule, getStartRule, getRule, noRules --, RuleName, Rules, RulesList
+    -- , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
+    -- , InputType(..)
+    -- , Adapter
+    -- , Operator(..), State
     )
 
 import Dict exposing (..)
 import Regex
+
+import Core.Adapter exposing (Adapter)
+import Core.Operator exposing (Operator, Rules, execute)
+import Core.State as State exposing (State)
+import Core.Result exposing (Position, FailureReason(..), Expectation(..), Sample(..))
 
 type alias Parser o =
     { adapt: Adapter o
@@ -26,13 +31,17 @@ init adapter =
 
 type alias Context o = ( Parser o, State o )
 
+type ParseResult o =
+      Matched o
+    | Failed (FailureReason o) Position
+
 -- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
 --        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
 --        Fix the docs in the intro then.
-parse : String -> Parser o -> ( ParseResult o, Maybe Position )
+parse : String -> Parser o -> ParseResult o
 parse input parser =
     let
-        state = (initState input)
+        state = (State.init input)
         context = (parser, state)
     in
         case getStartRule parser of
@@ -91,10 +100,6 @@ getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
     Dict.get name parser.rules
 
-type ParseResult o =
-      Matched o
-    | Failed (FailureReason o)
-
 -- UTILS
 
 extractParseResult : OperatorResult o -> ParseResult o
@@ -120,14 +125,6 @@ parseResultToResult result =
     case result of
         Matched v -> Ok v
         Failed f -> Err f
-
-concat : ParseResult o -> ParseResult o -> Context o -> OperatorResult o
-concat resultOne resultTwo inContext =
-    case ( resultOne, resultTwo ) of
-        ( Matched vOne, Matched vTwo ) ->
-            matchedList [ vOne, vTwo ] inContext
-        _ -> ( resultTwo, inContext )
-
 
 findPosition : State o -> Position
 findPosition state =
