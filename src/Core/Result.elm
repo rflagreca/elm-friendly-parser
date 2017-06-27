@@ -26,6 +26,6 @@ type FailureReason o =
     | NoStartRule
     | SomethingWasNotImplemented
 
-type ParseResult o =
-      Matched o
-    | Failed (FailureReason o) Position
+-- type ParseResult o =
+--       Matched o
+--     | Failed (FailureReason o) Position

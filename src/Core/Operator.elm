@@ -5,12 +5,17 @@ module Core.Operator exposing
     , action, pre, xpre, label, call, re, redesc
     , execute
     , getCurrentChar
+    , toResult
+    , failByEndOfInput
     )
 
 import Dict exposing (Dict)
 import Regex
 
-import Core.State exposing (State)
+import Core.State exposing
+    ( State
+    , findPosition
+    )
 import Core.Adapter exposing (Adapter)
 import Core.Action exposing
     ( ActionResult(..)
@@ -407,6 +412,9 @@ execRegex regex maybeDesc ctx =
 
 -- UTILS
 
+-- FIMXE: the functions which need no whole context, should use just State
+---       (and may be moved to State module)
+
 noRules : Grammar o
 noRules = Dict.empty
 
@@ -507,7 +515,23 @@ addRuleToResult ruleName ( result, ctx ) =
         Matched v -> ctx |> matchedRule ruleName v
         Failed failure -> ( Failed (FollowingRule ruleName failure), ctx )
 
+failByEndOfInput : Context o -> ( FailureReason o, Position )
+failByEndOfInput ctx =
+    let
+        ( _, _, state ) = ctx
+    in
+        ( ByExpectation
+            (ExpectedEndOfInput, (GotValue (getCurrentChar ctx)))
+        , findPosition state
+        )
+
 -- HELPERS
+
+toResult : StepResult o -> Result (FailureReason o) o
+toResult stepResult =
+    case stepResult of
+        Matched v -> Ok v
+        Failed f -> Err f
 
 getRule : RuleName -> Grammar o -> Maybe (Operator o)
 getRule name grammar =
@@ -517,6 +541,8 @@ loadPosition : Context o -> Context o -> Context o
 loadPosition ( _, _, loadFrom ) ( adapter, grammar, addTo ) =
     ( adapter, grammar, { addTo | position = loadFrom.position } )
 
+-- TODO: type Step o v f = TryNext ( Operator o, v ) | Success v | Success | Failure f
+--       chain should return Success or Failure then
 type Step o v = Next ( Operator o, v ) | StopWith v | Stop
 
 chain :

@@ -19,9 +19,20 @@ import Core.Operator exposing
     , Grammar
     , Rules
     , noRules
-    , getCurrentChar)
-import Core.State as State exposing (State)
-import Core.Result exposing (Position, FailureReason(..), Expectation(..), Sample(..))
+    , getCurrentChar
+    , toResult
+    , failByEndOfInput
+    )
+import Core.State as State exposing
+    ( State
+    , findPosition
+    )
+import Core.Result exposing
+    ( Position
+    , FailureReason(..)
+    , Expectation(..)
+    , Sample(..)
+    )
 
 type alias Parser o =
     { adapt: Adapter o
@@ -47,26 +58,26 @@ parse : String -> Parser o -> ParseResult o
 parse input parser =
     let
         state = (State.init input)
-        context = (parser, state)
+        context = (parser.adapt, parser.rules, state)
     in
         case getStartRule parser of
             Just startOperator ->
                 -- TODO: extractParseResult (execCall parser.startRule context)
                 let
-                    ( parseResult, lastCtx ) = (execute startOperator context)
-                    ( _, lastState ) = lastCtx
+                    ( opResult, lastCtx ) = (execute startOperator context)
+                    ( _, _, lastState ) = lastCtx
                 in
-                    case parseResult of
-                        Matched success ->
+                    case toResult opResult of
+                        Ok success ->
                             if lastState.position == (String.length input) then
-                                parseResult
+                                Matched success
                             else
-                                ( Failed (ByExpectation
-                                    (ExpectedEndOfInput, (GotValue (getCurrentChar lastCtx))))
-                                , Just (findPosition lastState)
-                                )
-                        Failed _ _ -> ( parseResult, Just (findPosition lastState) )
-            Nothing -> ( Failed NoStartRule, Nothing )
+                                let
+                                    ( reason, position ) = failByEndOfInput lastCtx
+                                in
+                                    Failed reason position
+                        Err reason -> Failed reason (findPosition lastState)
+            Nothing -> Failed NoStartRule (0, 0)
 
 withRules : Rules o -> Parser o -> Parser o
 withRules rules parser =
@@ -127,42 +138,3 @@ parseResultToResult result =
     case result of
         Matched v -> Ok v
         Failed f _ -> Err f
-
-findPosition : State o -> Position
-findPosition state =
-    let
-        input = state.input
-        allLines = String.lines input
-        linesCount = List.length allLines
-        curPosition = (state.position - (linesCount - 1)) -- '\n' count as separate symbols
-    in
-        .cursor
-            (List.foldl
-                (\line { cursor, prevCursor, sum } ->
-                    if (sum >= curPosition) then
-                        { cursor = prevCursor
-                        , prevCursor = prevCursor
-                        , sum = sum
-                        }
-                    else
-                        case cursor of
-                            ( lineIndex, charIndex ) ->
-                                let
-                                    strlen = (String.length line)
-                                in
-                                    if (sum + strlen) > curPosition then
-                                        { cursor = ( lineIndex, curPosition - sum )
-                                        , prevCursor = cursor
-                                        , sum = sum + strlen
-                                        }
-                                    else
-                                        { cursor = ( lineIndex + 1, 0 )
-                                        , prevCursor = cursor
-                                        , sum = sum + strlen
-                                        }
-                )
-                { cursor = (0, 0)
-                , prevCursor = (0, 0)
-                , sum = 0
-                }
-                (String.lines input))
