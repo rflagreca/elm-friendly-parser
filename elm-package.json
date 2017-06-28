@@ -7,12 +7,7 @@
         "./src",
         "./test"
     ],
-    "exposed-modules": [
-        "Parser",
-        "Core.Export",
-        "BasicParser.Parser",
-        "BasicParser.Export"
-    ],
+    "exposed-modules": [ ],
     "dependencies": {
         "elm-community/elm-test": "3.0.0 <= v < 4.0.0",
         "elm-community/list-extra": "6.1.0 <= v < 7.0.0",

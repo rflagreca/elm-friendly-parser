@@ -1,6 +1,7 @@
 module Utils exposing (..)
 
 import Parser exposing (..)
+import ParseResult exposing (..)
 
 import Expect
 
@@ -49,7 +50,7 @@ expectToFailToParseAt input expectedPosition parser =
         in
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
-                Failed _ ->
+                Failed _ _ ->
                     case maybePosition of
                         Just actualPosition -> Expect.equal actualPosition expectedPosition
                         Nothing -> Expect.fail ("Expected to receive a position with failure.")
@@ -64,11 +65,11 @@ isNotParsed : ParseResult o -> Bool
 isNotParsed result =
     case result of
         Matched _ -> False
-        Failed _ -> True
+        Failed _ _ -> True
 
 
 isParsedAs : String -> ParseResult o -> Bool
 isParsedAs subject result =
     case result of
         Matched s -> (toString s == subject)
-        Failed _-> False
+        Failed _ _ -> False

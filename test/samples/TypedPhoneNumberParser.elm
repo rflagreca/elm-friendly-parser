@@ -1,6 +1,9 @@
 module Samples.TypedPhoneNumberParser exposing (..)
 
 import Parser exposing (..)
+import Operator exposing (..)
+import Action exposing (..)
+import Adapter
 
 type PhoneNumberPart =
     AString String
@@ -16,7 +19,7 @@ type PhoneNumberPart =
 
 type ReturnType = PhoneNumberPart
 
-rules : RulesList PhoneNumberPart
+rules : Rules PhoneNumberPart
 rules =
     [ ( "phoneNumber"
       , action
@@ -67,12 +70,12 @@ init =
     |> Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
 
-adapter : InputType PhoneNumberPart -> PhoneNumberPart
+adapter : Adapter.InputType PhoneNumberPart -> PhoneNumberPart
 adapter input =
     case input of
-        Parser.AValue str -> AString str
-        Parser.AList list -> AList list
-        Parser.ARule name value -> value
+        Adapter.AValue str -> AString str
+        Adapter.AList list -> AList list
+        Adapter.ARule name value -> value
 
 isAString : PhoneNumberPart -> Bool
 isAString test =

@@ -1,11 +1,11 @@
-module Core.Action exposing
+module Action exposing
     ( ActionResult(..)
     , PrefixActionResult(..)
     , UserCode
     , UserPrefixCode
     )
 
-import Core.State exposing (State)
+import State exposing (State)
 
 {-| TODO -}
 type ActionResult o = Pass o | PassThrough | Fail -- Return o | PassThrough | Fail

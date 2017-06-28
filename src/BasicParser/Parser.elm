@@ -3,7 +3,7 @@ module BasicParser.Parser exposing
     , init, start, withRules
     , ParseResult
     , ReturnType(..)
-    , Rules, Operator
+    , Grammar, Rules, Operator, InputType
     )
 
 {-| TODO
@@ -26,11 +26,16 @@ module BasicParser.Parser exposing
 
 # Extensions
 
-@docs Rules
+@docs Grammar
+    , Rules
     , Operator
+    , InputType
 
 -}
-import Core.Parser as Parser exposing (..)
+import Parser as Parser exposing (..)
+import Operator as Operator exposing (..)
+import ParseResult as ParseResult exposing (..)
+import Adapter as Adapter exposing (..)
 
 {-| TODO -}
 type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
@@ -39,14 +44,16 @@ type ReturnType = RString String | RList (List ReturnType) | RRule RuleName Retu
 type alias BasicParser = Parser.Parser ReturnType
 
 {-| TODO -}
-type alias Operator = Parser.Operator ReturnType
+type alias Operator = Operator.Operator ReturnType
 {-| TODO -}
-type alias Rules = Parser.Rules ReturnType
-type alias RulesList = Parser.RulesList ReturnType
-type alias InputType = Parser.InputType ReturnType
+type alias Grammar = Operator.Grammar ReturnType
+{-| TODO -}
+type alias Rules = Operator.Rules ReturnType
+{-| TODO -}
+type alias InputType = Adapter.InputType ReturnType
 
 {-| TODO -}
-type alias ParseResult = Parser.ParseResult ReturnType
+type alias ParseResult = ParseResult.ParseResult ReturnType
 
 {-| TODO -}
 init : BasicParser
@@ -68,12 +75,12 @@ start op =
 -- parse = Parser.parse
 
 {-| TODO -}
-withRules : RulesList -> BasicParser
+withRules : Rules -> BasicParser
 withRules rules = init |> Parser.withRules rules
 
 adapter : InputType -> ReturnType
 adapter input =
     case input of
-        Parser.AValue str -> RString str
-        Parser.AList list -> RList list
-        Parser.ARule name value -> RRule name value
+        Adapter.AValue str -> RString str
+        Adapter.AList list -> RList list
+        Adapter.ARule name value -> RRule name value

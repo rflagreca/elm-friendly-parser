@@ -1,5 +1,6 @@
-module Core.Result exposing
-    ( Expectation(..)
+module ParseResult exposing
+    ( ParseResult(..)
+    , Expectation(..)
     , Sample(..)
     , FailureReason(..)
     , Position
@@ -26,6 +27,6 @@ type FailureReason o =
     | NoStartRule
     | SomethingWasNotImplemented
 
--- type ParseResult o =
---       Matched o
---     | Failed (FailureReason o) Position
+type ParseResult o =
+      Matched o
+    | Failed (FailureReason o) Position

@@ -1,10 +1,12 @@
 module Samples.PhoneNumberParser exposing (init)
 
 import Parser exposing (..)
+import Operator exposing (..)
+import Adapter
 
 type alias ReturnType = String
 
-rules : RulesList ReturnType
+rules : Rules ReturnType
 rules =
     [ ( "phoneNumber"
       , seqnc
@@ -43,9 +45,9 @@ init =
     |> Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
 
-adapter : InputType ReturnType -> ReturnType
+adapter : Adapter.InputType ReturnType -> ReturnType
 adapter input =
     case input of
-        Parser.AValue str -> str
-        Parser.AList list -> String.join "" list
-        Parser.ARule name value -> name ++ ":" ++ value ++ ";"
+        Adapter.AValue str -> str
+        Adapter.AList list -> String.join "" list
+        Adapter.ARule name value -> name ++ ":" ++ value ++ ";"

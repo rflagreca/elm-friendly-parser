@@ -1,6 +1,10 @@
 module Samples.ArithmeticsParser exposing (..)
 
 import Parser exposing (..)
+import Operator exposing (..)
+import Adapter
+import State exposing (..)
+import Action exposing (..)
 
 import Dict
 
@@ -11,7 +15,7 @@ type ReturnType =
    | ANumber Float
 
 {- The actual grammar for this parser. See `arithmetics.peg` in this directory for the source PEG Grammar -}
-rules : RulesList ReturnType
+rules : Rules ReturnType
 rules =
     [ ( "Expression"
       , action
@@ -84,12 +88,12 @@ init =
 Does nothing special here, since we only use extended `ANumber` type
 in actions. As an improvement, we also may store arithmetics operator:
 `+`, `-`, `/` or `*` -}
-adapter : InputType ReturnType -> ReturnType
+adapter : Adapter.InputType ReturnType -> ReturnType
 adapter input =
     case input of
-        Parser.AValue str -> AString str
-        Parser.AList list -> AList list
-        Parser.ARule name value -> value
+        Adapter.AValue str -> AString str
+        Adapter.AList list -> AList list
+        Adapter.ARule name value -> value
 
 reduceAdditionAndSubtraction : ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =

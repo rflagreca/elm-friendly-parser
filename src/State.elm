@@ -1,4 +1,4 @@
-module Core.State exposing
+module State exposing
     ( Values
     , State
     , init

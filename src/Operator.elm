@@ -1,5 +1,5 @@
-module Core.Operator exposing
-    ( Operator
+module Operator exposing
+    ( Operator(..)
     , RuleName, Rule, Grammar, Rules, noRules
     , ch, match, choice, seqnc, maybe, text, any, some, and, not
     , action, pre, xpre, label, call, re, redesc
@@ -12,24 +12,24 @@ module Core.Operator exposing
 import Dict exposing (Dict)
 import Regex
 
-import Core.State exposing
+import State exposing
     ( State
     , findPosition
     )
-import Core.Adapter exposing (Adapter)
-import Core.Action exposing
+import Adapter exposing (Adapter)
+import Action exposing
     ( ActionResult(..)
     , PrefixActionResult(..)
     , UserCode
     , UserPrefixCode
     )
-import Core.Result exposing
+import ParseResult exposing
     ( Expectation(..)
     , FailureReason(..)
     , Sample(..)
     , Position
     )
-import Core.Adapter exposing (InputType(..))
+import Adapter exposing (InputType(..))
 
 type alias RuleName = String
 type alias Rule o = ( RuleName, Operator o )

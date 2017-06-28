@@ -1,8 +1,10 @@
-module Core.Adapter exposing
+module Adapter exposing
     ( InputType(..)
     , Adapter
     )
 
+-- FIXME: there should be an option of UserType contained in this type,
+-- this could allow us to get rid of Adapters and stuff
 type InputType o =
       AValue String
     | AList (List o)
