@@ -6,6 +6,10 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
+import Operator exposing (..)
+import Action exposing (..)
+import ParseResult exposing (..)
+import State exposing (Position)
 import BasicParser.Parser as BasicParser exposing (..)
 
 import Utils exposing (..)
@@ -43,7 +47,7 @@ testStartRule =
             (BasicParser.init
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed NoStartRule))
+                    (Failed NoStartRule (0, 0)))
         -- FIXME: test allowing to specify custom startRule by name (below, in testDefiningAndCallingRules)
         ]
 
@@ -64,13 +68,13 @@ testBasicMatching =
                 (match "ab"))
                 |> expectToFailToParseWith
                     "abc"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "c"))))
+                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "c")) (0, 2)))
         , test "reports the failed match properly" <|
             ((BasicParser.start <|
                 (match "foo"))
                 |> expectToFailToParseWith
                     "for"
-                    (Failed (ByExpectation (ExpectedValue "foo", GotValue "f")))) -- GotValue "for"
+                    (Failed (ByExpectation (ExpectedValue "foo", GotValue "f")) (0, 0))) -- GotValue "for"
         -- FIXME: test fails when not the whole input matched
         ]
 
@@ -97,7 +101,8 @@ testChoiceMatching =
                         , ( "b", (GotValue "f") )
                         , ( "c", (GotValue "f") )
                         ]
-                        (GotValue "f")))
+                        (GotValue "f")
+                        (0, 0)))
         , test "gets first matching result" <|
             ((BasicParser.start <|
                 choice [ match "foo", match "f" ])
@@ -137,7 +142,7 @@ testSequenceMatching =
                 seqnc [ match "f", match "o", match "p" ])
                 |> expectToFailToParseWith
                 "foo"
-                (Failed (ByExpectation (ExpectedValue "p", GotValue "o" ))))
+                (Failed (ByExpectation (ExpectedValue "p", GotValue "o" )) (0, 2)))
         ]
 
 testMaybeMatching : Test
@@ -184,7 +189,7 @@ testTextMatching =
                 text ( seqnc [ match "f", match "o", match "o" ]))
                 |> expectToFailToParseWith
                     "bar"
-                    (Failed (ByExpectation (ExpectedValue "f", GotValue "b"))))
+                    (Failed (ByExpectation (ExpectedValue "f", GotValue "b")) (0, 0)))
         ]
 
 testAnyMatching : Test
@@ -260,7 +265,7 @@ testSomeMatching =
                 seqnc [ some (match "f"), match "bar" ])
                 |> expectToFailToParseWith
                     "bar"
-                    (Failed (ByExpectation (ExpectedValue "f", GotValue "b"))))
+                    (Failed (ByExpectation (ExpectedValue "f", GotValue "b")) (0, 0)))
         ]
 
 testAndMatching : Test
@@ -268,16 +273,16 @@ testAndMatching =
     describe "`and` matching"
         [ test "matches when sample exists" <|
             ((BasicParser.start <|
-                seqnc [ Parser.and (match "foo"), match "foobar" ])
+                seqnc [ Operator.and (match "foo"), match "foobar" ])
                 |> expectToParseNested
                     "foobar"
                     [ "", "foobar" ])
         , test "fails when sample not exists" <|
             ((BasicParser.start <|
-                seqnc [ Parser.and (match "foo"), match "barfoo" ])
+                seqnc [ Operator.and (match "foo"), match "barfoo" ])
                 |> expectToFailToParseWith
                     "barfoo"
-                    (Failed (ByExpectation (ExpectedValue "foo", GotValue "b" ))))
+                    (Failed (ByExpectation (ExpectedValue "foo", GotValue "b")) (0, 0)))
         ]
 
 testNotMatching : Test
@@ -285,13 +290,13 @@ testNotMatching =
     describe "`not` matching"
         [ test "fails when sample exists" <|
             ((BasicParser.start <|
-                seqnc [ Parser.not (match "foo"), match "foobar" ])
+                seqnc [ Operator.not (match "foo"), match "foobar" ])
                 |> expectToFailToParseWith
                     "foobar"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f"))))
+                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "matches when sample not exists" <|
             ((BasicParser.start <|
-                seqnc [ Parser.not (match "foo"), match "barfoo" ])
+                seqnc [ Operator.not (match "foo"), match "barfoo" ])
                 |> expectToParseNested
                     "barfoo"
                     [ "", "barfoo" ])
@@ -335,7 +340,7 @@ testActionMatching =
                     (\match ctx -> Fail))
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed (ByExpectation (ExpectedAnything, GotValue ""))))
+                    (Failed (ByExpectation (ExpectedAnything, GotValue "")) (0, 3)))
         -- TODO: lists etc.
         ]
 
@@ -359,7 +364,7 @@ testPreMatching =
                     ])
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f"))))
+                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "provides access to the position" <|
             ((BasicParser.start <|
                 seqnc
@@ -391,7 +396,7 @@ testNegPreMatching =
                     ])
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f"))))
+                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "provides access to the position" <|
             ((BasicParser.start
                 <| seqnc
@@ -469,7 +474,7 @@ testREMatching =
                 redesc "f?oo" "foo regex")
                 |> expectToFailToParseWith
                     "boo"
-                    (Failed (ByExpectation (ExpectedRegexMatch "foo regex", GotValue "b"))))
+                    (Failed (ByExpectation (ExpectedRegexMatch "foo regex", GotValue "b")) (0, 0)))
         ]
 
 testDefiningAndCallingRules : Test
@@ -512,9 +517,10 @@ testDefiningAndCallingRules =
                 |> expectToFailToParseWith
                     "bar"
                     (Failed (FollowingRule "test"
-                        (ByExpectation (ExpectedValue "foo", GotValue "b"))))) -- GotValue "bar"
+                        (ByExpectation (ExpectedValue "foo", GotValue "b"))) (0, 0))) -- GotValue "bar"
 
         ]
+
 
 testReportingPosition : Test
 testReportingPosition =
@@ -522,9 +528,9 @@ testReportingPosition =
         [ test "no position is passed when match was successful" <|
             ((BasicParser.start <|
                 match "foo")
-                |> expectToGetResultOfParsing
+                |> expectToParseWith
                     "foo"
-                    (Matched (BasicParser.RString "foo"), Nothing))
+                    (Matched (BasicParser.RString "foo")))
         , test "properly reports position of the failure" <|
             ((BasicParser.start <|
                 seqnc [ match "fo", match "x" ])
@@ -543,15 +549,15 @@ testReportingPosition =
 
 -- UTILS
 
-nestedFailureOf : List (String, Sample) -> Sample -> BasicParser.ParseResult
-nestedFailureOf strings sample =
+nestedFailureOf : List (String, Sample) -> Sample -> Position -> BasicParser.ParseResult
+nestedFailureOf strings sample position =
     Failed (FollowingNestedOperator
         (List.foldl
             (\(str, sample) failures ->
                 failures ++ [ (ByExpectation (ExpectedValue str, sample)) ])
             []
             strings
-        , sample))
+        , sample)) position
 
 expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
 expectToParse input output parser =

@@ -10,7 +10,7 @@ import Dict exposing (Dict)
 
 type alias Values o = Dict String o
 
-type alias Position = ( Int, Int )
+type alias Position = ( Int, Int ) -- FIXME : Known ( Int, Int ) | Unknown
 
 noValues : Values v
 noValues = Dict.empty

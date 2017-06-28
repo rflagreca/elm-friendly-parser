@@ -3,7 +3,14 @@ module ParserTest exposing (suite)
 import Test exposing (..)
 
 import Parser exposing (..)
+import Operator exposing (..)
 import Utils exposing (..)
+import State exposing (..)
+import ParseResult exposing (..)
+import Adapter
+
+zeroPos : Position
+zeroPos = (0, 0)
 
 suite : Test
 suite =
@@ -19,7 +26,7 @@ testStartRule =
             ((Parser.init alwaysTestStringAdapter)
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed NoStartRule))
+                    (Failed NoStartRule zeroPos))
         ]
 
 testAdapters : Test
@@ -39,13 +46,13 @@ testAdapters =
             ((Parser.start
                 (match "abc")
                 (\v -> case v of
-                    Parser.AValue s -> (s ++ "d")
+                    Adapter.AValue s -> (s ++ "d")
                     _ -> "failed"))
                 |> expectToParse
                     "abc"
                     "abcd")
         ]
 
-alwaysTestStringAdapter : InputType String -> String
+alwaysTestStringAdapter : Adapter.InputType String -> String
 alwaysTestStringAdapter val =
     "test"

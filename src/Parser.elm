@@ -25,11 +25,11 @@ import Operator exposing
     )
 import State as State exposing
     ( State
+    , Position
     , findPosition
     )
 import ParseResult exposing
     ( ParseResult(..)
-    , Position
     , FailureReason(..)
     , Expectation(..)
     , Sample(..)

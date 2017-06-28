@@ -3,6 +3,10 @@ module CustomParserTest exposing (suite)
 import Test exposing (..)
 
 import Parser exposing (..)
+import Operator exposing (..)
+import Adapter
+import ParseResult exposing (..)
+import Action exposing (..)
 
 import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
 import Samples.PhoneNumberParser as PhoneNumberParser exposing (..)
@@ -27,12 +31,12 @@ start : Operator MyReturnType -> Parser MyReturnType
 start op =
     Parser.start op adapter
 
-adapter : InputType MyReturnType -> MyReturnType
+adapter : Adapter.InputType MyReturnType -> MyReturnType
 adapter input =
     case input of
-        Parser.AValue str -> String.length str
-        Parser.AList list -> List.length list
-        Parser.ARule name value -> String.length name
+        Adapter.AValue str -> String.length str
+        Adapter.AList list -> List.length list
+        Adapter.ARule name value -> String.length name
 
 -- CUSTOM : THE TEST
 
@@ -53,7 +57,7 @@ customParserTest =
         , test "still should fail if parsing fails" <|
             expectToFailToParseWith
                 "abz"
-                (Failed (ByExpectation (ExpectedValue "abc", GotValue "a")))
+                (Failed (ByExpectation (ExpectedValue "abc", GotValue "a")) (0, 0))
                 (start <| (match "abc"))
         , test "should replace value with the one returned from action code" <|
             expectToMatchWith

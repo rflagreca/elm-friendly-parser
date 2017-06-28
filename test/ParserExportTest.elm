@@ -4,6 +4,8 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
+import Operator exposing (..)
+import ParseResult exposing (..)
 import Export as Export exposing (..)
 
 import BasicParser.Parser as BP exposing (..)
@@ -101,7 +103,7 @@ Matched
 """
 -}
                     (BPExport.parseResult
-                        ((Parser.Matched
+                        (Matched
                             (BP.RList (
                                 [ BP.RString "a"
                                 , BP.RList
@@ -113,8 +115,7 @@ Matched
                                     ]
                                 , BP.RString "bar"
                                 ]
-                            )))
-                        , Nothing))
+                            ))))
         ]
 
 testExportingFailures : Test
@@ -129,13 +130,10 @@ Failed at position 20:20 ( line 20, char 20 )
 Expected value "a", however got value "b".
 """
                     (BPExport.parseResult
-                        (
-                            (Parser.Failed
-                                (Parser.ByExpectation ( ExpectedValue "a", GotValue "b" ))
-                            )
-                        , (Just (20, 20))
-                        )
-                    )
+                        (Failed
+                            (ByExpectation ( ExpectedValue "a", GotValue "b" ))
+                         (20, 20)))
+
         ]
 
 testExportingResult : Test

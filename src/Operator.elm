@@ -14,6 +14,7 @@ import Regex
 
 import State exposing
     ( State
+    , Position
     , findPosition
     )
 import Adapter exposing (Adapter)
@@ -27,7 +28,6 @@ import ParseResult exposing
     ( Expectation(..)
     , FailureReason(..)
     , Sample(..)
-    , Position
     )
 import Adapter exposing (InputType(..))
 

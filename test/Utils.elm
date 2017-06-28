@@ -2,6 +2,7 @@ module Utils exposing (..)
 
 import Parser exposing (..)
 import ParseResult exposing (..)
+import State exposing (Position)
 
 import Expect
 
@@ -14,7 +15,7 @@ expectToParseWith input result parser =
     \() ->
         Expect.equal
             result
-            (Tuple.first (parser |> parse input))
+            (parser |> parse input)
 
 expectToMatchWith : String -> o -> Parser o -> (() -> Expect.Expectation)
 expectToMatchWith input value parser =
@@ -25,18 +26,15 @@ expectToMatchWith input value parser =
 expectToFailToParse : String -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParse input parser =
     \() ->
-        let
-            ( result, _ ) = parser |> parse input
-        in
-            Expect.true
-                ("Expected to fail to parse \"" ++ input ++ "\".")
-                (isNotParsed result)
+        Expect.true
+            ("Expected to fail to parse \"" ++ input ++ "\".")
+            (isNotParsed (parser |> parse input))
 
 expectToFailToParseWith : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParseWith input expectedFailure parser =
     \() ->
         let
-            ( result, _ ) = parser |> parse input
+            result = parser |> parse input
         in
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
@@ -45,20 +43,15 @@ expectToFailToParseWith input expectedFailure parser =
 expectToFailToParseAt : String -> Position -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParseAt input expectedPosition parser =
      \() ->
-        let
-            ( result, maybePosition ) = parser |> parse input
-        in
-            case result of
-                Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
-                Failed _ _ ->
-                    case maybePosition of
-                        Just actualPosition -> Expect.equal actualPosition expectedPosition
-                        Nothing -> Expect.fail ("Expected to receive a position with failure.")
+        case parser |> parse input of
+            Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
+            Failed _ position ->
+                Expect.equal position expectedPosition
 
-expectToGetResultOfParsing : String -> ( ParseResult o, Maybe Position ) -> Parser o -> (() -> Expect.Expectation)
-expectToGetResultOfParsing input result parser =
-    \() ->
-        Expect.equal result (parser |> parse input)
+-- expectToGetResultOfParsing : String -> ( ParseResult o, Maybe Position ) -> Parser o -> (() -> Expect.Expectation)
+-- expectToGetResultOfParsing input result parser =
+--     \() ->
+--         Expect.equal result (parser |> parse input)
 
 
 isNotParsed : ParseResult o -> Bool

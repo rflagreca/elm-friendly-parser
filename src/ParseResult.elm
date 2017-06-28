@@ -3,10 +3,9 @@ module ParseResult exposing
     , Expectation(..)
     , Sample(..)
     , FailureReason(..)
-    , Position
     )
 
-type alias Position = ( Int, Int )
+import State exposing (Position)
 
 type Expectation =
       ExpectedValue String -- FIXME: InputType?
