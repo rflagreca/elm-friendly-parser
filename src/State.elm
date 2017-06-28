@@ -10,7 +10,7 @@ import Dict exposing (Dict)
 
 type alias Values o = Dict String o
 
-type alias Position = ( Int, Int ) -- FIXME : Known ( Int, Int ) | Unknown
+type alias Position = ( Int, Int ) -- FIXME : Known ( Int, Int ) | Unknown | EndOfInput
 
 noValues : Values v
 noValues = Dict.empty
@@ -43,12 +43,7 @@ findPosition state =
         .cursor
             (List.foldl
                 (\line { cursor, prevCursor, sum } ->
-                    if (sum >= curPosition) then
-                        { cursor = prevCursor
-                        , prevCursor = prevCursor
-                        , sum = sum
-                        }
-                    else
+                    if (sum < curPosition) then
                         case cursor of
                             ( lineIndex, charIndex ) ->
                                 let
@@ -60,10 +55,18 @@ findPosition state =
                                         , sum = sum + strlen
                                         }
                                     else
-                                        { cursor = ( lineIndex + 1, 0 )
+                                        { cursor =
+                                            if (lineIndex < linesCount - 1)
+                                                then ( lineIndex + 1, 0 )
+                                                else ( lineIndex, strlen )
                                         , prevCursor = cursor
                                         , sum = sum + strlen
                                         }
+                    else
+                        { cursor = prevCursor
+                        , prevCursor = prevCursor
+                        , sum = sum
+                        }
                 )
                 { cursor = (0, 0)
                 , prevCursor = (0, 0)
