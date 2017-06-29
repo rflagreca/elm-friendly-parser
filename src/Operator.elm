@@ -35,9 +35,9 @@ type alias Rule o = ( RuleName, Operator o )
 type alias Grammar o = Dict RuleName (Operator o)
 type alias Rules o = List (Rule o)
 
-type StepResult o = Matched o | Failed (FailureReason o)
+type StepResult o = Matched (Token o) | Failed (FailureReason o)
 
-type alias Context o = ( Adapter o, Grammar o, State o )
+type alias Context o = ( Adapter o, Grammar o, State o ) -- FIXME: remove Adapter from Context
 
 type alias OperatorResult o = ( StepResult o, Context o )
 
@@ -207,7 +207,7 @@ execSequence ops ctx =
             in
                 case applied of
                     ( _, Nothing, matches, lastCtx ) ->
-                        lastCtx |> matchedList matches
+                        lastCtx |> matched (Tokens matches)
                     ( _, Just reason, failures, lastCtx ) ->
                         ctx |> loadPosition lastCtx |> failed reason
 
@@ -235,7 +235,7 @@ execChoice ops ctx =
                     firstOp ( restOps, Nothing, [] ) ctx
             in
                 case applied of
-                    ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matchedWith success
+                    ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matched success
                         -- ctx |> loadPosition lastCtx |> matchedWith success
                     ( _, Nothing, failures ) ->
                         ctx |> failedNestedCC (keepOnlyFailures failures)
@@ -258,7 +258,7 @@ execSome op ctx =
                   op ( [], Nothing, Nothing ) ctx
     in
         case applied of
-            ( allMatches, Just lastCtx, Nothing ) -> lastCtx |> matchedList allMatches
+            ( allMatches, Just lastCtx, Nothing ) -> lastCtx |> matched (Tokens allMatches)
             ( _, _, Just failure ) -> ctx |> failed failure
             _ -> ctx |> failedBy ExpectedAnything GotEndOfInput
 
@@ -269,7 +269,7 @@ execAny op ctx =
     in
         case someResult of
             ( Matched _, _ ) -> someResult
-            ( Failed _, _ ) -> ctx |> matchedList []
+            ( Failed _, _ ) -> ctx |> matched (Tokens [])
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -277,7 +277,7 @@ execMaybe op ctx =
         result = execute op ctx
     in
         case result of
-            ( Matched s, newCtx ) -> matchedWith s newCtx
+            ( Matched s, newCtx ) -> matched s newCtx
             ( Failed _, _ ) -> matched "" ctx
 
 execTextOf : Operator o -> Context o -> OperatorResult o
@@ -325,8 +325,8 @@ execAction op userCode ctx =
         case result of
             Matched v ->
                 case (userCode v newState) of
-                    Pass userV -> resultingCtx |> matchedWith userV
-                    PassThrough -> resultingCtx |> matchedWith v
+                    Pass userV -> resultingCtx |> matched userV
+                    PassThrough -> resultingCtx |> matched v
                     Fail -> resultingCtx |> failedCC ExpectedAnything
             Failed _ -> ( result, resultingCtx )
 
@@ -417,30 +417,9 @@ execRegex regex maybeDesc ctx =
 noRules : Grammar o
 noRules = Dict.empty
 
-matchedWith : o -> Context o -> OperatorResult o
-matchedWith output ctx =
-    ( Matched output, ctx )
-
-matched : String -> Context o -> OperatorResult o
-matched val ctx =
-    let
-        ( adapter, _, _ ) = ctx
-    in
-        matchedWith (adapter (Match val)) ctx
-
-matchedList : List (Token o) -> Context o -> OperatorResult o
-matchedList vals ctx =
-    let
-        ( adapter, _, _ ) = ctx
-    in
-        matchedWith (adapter (Tokens vals)) ctx
-
-matchedRule : RuleName -> o -> Context o -> OperatorResult o
-matchedRule ruleName value ctx =
-    let
-        ( adapter, parser, _ ) = ctx
-    in
-        matchedWith (adapter (InRule ruleName value)) ctx
+matched : Token o -> Context o -> OperatorResult o
+matched token ctx =
+    ( Matched token, ctx )
 
 -- matchedFlatList : List o -> Context o -> OperatorResult o
 -- matchedFlatList val ctx =
@@ -511,7 +490,7 @@ gotChar ctx =
 addRuleToResult : RuleName -> OperatorResult o -> OperatorResult o
 addRuleToResult ruleName ( result, ctx ) =
     case result of
-        Matched v -> ctx |> matchedRule ruleName v
+        Matched v -> ctx |> matched (InRule ruleName v)
         Failed failure -> ( Failed (FollowingRule ruleName failure), ctx )
 
 failByEndOfInput : Context o -> ( FailureReason o, Position )
@@ -526,7 +505,7 @@ failByEndOfInput ctx =
 
 -- HELPERS
 
-toResult : StepResult o -> Result (FailureReason o) o
+toResult : StepResult o -> Result (FailureReason o) (Token o)
 toResult stepResult =
     case stepResult of
         Matched v -> Ok v

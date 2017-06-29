@@ -10,7 +10,9 @@ module Parser exposing
     , Operator(..), State
     )
 
-{-| # Parsing
+{-| This parser is different to [`elm-tools/parser`](https://github.com/elm-tools/parser) which I was unaware about, at first. You may find the other one more elegant, while this one could be considered more academic. Still you are free to chose any way closer to your heart.
+
+# Parsing
 
 If you just want to define some Rules and parse a text with them, then instantiate the [`BasicParser`](TODO)—this is the way to do your parsing fast and easy.
 

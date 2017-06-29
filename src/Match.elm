@@ -8,7 +8,7 @@ module Match exposing
 type Token o =
       Lexem String
     | Tokens (List (Token o))
-    | InRule String Token -- FIXME: RuleName
+    | InRule String (Token o) -- FIXME: RuleName
     | Custom o
 
 type alias Adapter o = (Token o -> o)
