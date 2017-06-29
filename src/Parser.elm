@@ -56,14 +56,14 @@ parse : String -> Parser o -> ParseResult o
 parse input parser =
     let
         state = (State.init input)
-        context = (parser.adapt, parser.rules, state)
+        context = (parser.rules, state)
     in
         case getStartRule parser of
             Just startOperator ->
                 -- TODO: extractParseResult (execCall parser.startRule context)
                 let
                     ( opResult, lastCtx ) = (execute startOperator context)
-                    ( _, _, lastState ) = lastCtx
+                    ( _, lastState ) = lastCtx
                 in
                     case toResult opResult of
                         Ok success ->
