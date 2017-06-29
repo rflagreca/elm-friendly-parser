@@ -34,6 +34,7 @@ import ParseResult exposing
     , Expectation(..)
     , Sample(..)
     )
+import Match exposing (Token)
 
 type alias Parser o =
     { adapt: Adapter o
@@ -124,13 +125,13 @@ getRule name parser =
 -- opResultToMaybe ( parseResult, ctx ) =
 --     ( parseResultToMaybe parseResult, ctx )
 
-parseResultToMaybe : ParseResult o -> Maybe o
+parseResultToMaybe : ParseResult o -> Maybe (Token o)
 parseResultToMaybe result =
     case result of
         Matched v -> Just v
         Failed _ _ -> Nothing
 
-parseResultToResult : ParseResult o -> Result (FailureReason o) o
+parseResultToResult : ParseResult o -> Result (FailureReason o) (Token o)
 parseResultToResult result =
     case result of
         Matched v -> Ok v

@@ -166,7 +166,7 @@ execNextChar ctx =
         if (state.position >= state.inputLength) then
             ctx |> failedBy ExpectedAnything GotEndOfInput
         else
-            ctx |> advanceBy 1 |> matched (getNextChar ctx)
+            ctx |> advanceBy 1 |> matched (Lexem (getNextChar ctx))
 
 execMatch : String -> Context o -> OperatorResult o
 execMatch expectation ctx =
@@ -180,7 +180,7 @@ execMatch expectation ctx =
         else
             if (String.startsWith expectation
                 (state.input |> String.dropLeft state.position)) then
-                ctx |> advanceBy expectationLength |> matched expectation
+                ctx |> advanceBy expectationLength |> matched (Lexem expectation)
             else
                 ctx |> failedCC (ExpectedValue expectation)
 
@@ -278,7 +278,7 @@ execMaybe op ctx =
     in
         case result of
             ( Matched s, newCtx ) -> matched s newCtx
-            ( Failed _, _ ) -> matched "" ctx
+            ( Failed _, _ ) -> matched NoLexem ctx
 
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
@@ -292,8 +292,8 @@ execTextOf op ctx =
                 let
                     ( _, _, newState ) = newCtx
                 in
-                    newCtx |> matched
-                        (newState.input |> String.slice prevPos newState.position)
+                    newCtx |> matched (Lexem
+                        (newState.input |> String.slice prevPos newState.position))
             failure -> failure
 
 execAnd : Operator o -> Context o -> OperatorResult o
@@ -302,7 +302,7 @@ execAnd op ctx =
         ( result, newCtx ) = (execute op ctx)
     in
         case result of
-            Matched v -> matched "" ctx
+            Matched v -> matched NoLexem ctx
             failure -> ( failure, newCtx )
 
 execNot : Operator o -> Context o -> OperatorResult o
@@ -312,7 +312,7 @@ execNot op ctx =
     in
         case result of
             Matched _ -> ctx |> failedCC ExpectedEndOfInput
-            failure -> matched "" ctx
+            failure -> matched NoLexem ctx
 
 execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
 execAction op userCode ctx =
@@ -325,7 +325,7 @@ execAction op userCode ctx =
         case result of
             Matched v ->
                 case (userCode v newState) of
-                    Pass userV -> resultingCtx |> matched userV
+                    Pass userV -> resultingCtx |> matched (Custom userV)
                     PassThrough -> resultingCtx |> matched v
                     Fail -> resultingCtx |> failedCC ExpectedAnything
             Failed _ -> ( result, resultingCtx )
@@ -337,7 +337,7 @@ execPre userCode ctx =
         result = (userCode state)
     in
         case result of
-            Continue -> ctx |> matched ""
+            Continue -> ctx |> matched NoLexem
             Halt -> ctx |> failedCC ExpectedEndOfInput
 
 execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
@@ -348,7 +348,7 @@ execNegPre userCode ctx =
     in
         case result of
             Continue -> ctx |> failedCC ExpectedEndOfInput
-            Halt -> ctx |> matched ""
+            Halt -> ctx |> matched NoLexem
 
 execLabel : String -> Operator o -> Context o -> OperatorResult o
 execLabel name op ctx =
@@ -404,7 +404,7 @@ execRegex regex maybeDesc ctx =
                 if match.index == 0 then
                     ctx
                         |> advanceBy (String.length match.match)
-                        |> matched match.match
+                        |> matched (Lexem match.match)
                 else
                     ctx |> failedRE description
             Nothing -> ctx |> failedRE description
@@ -553,7 +553,7 @@ chain stepFn initialOp initialVal initialCtx =
 --             matchedList [ vOne, vTwo ] inContext
 --         _ -> ( resultTwo, inContext )
 
-keepOnlyMatches : List (StepResult o) -> List o
+keepOnlyMatches : List (StepResult o) -> List (Token o)
 keepOnlyMatches parseResults =
     List.filterMap
         (\result ->

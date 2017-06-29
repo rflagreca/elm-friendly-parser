@@ -7,8 +7,9 @@ module State exposing
     )
 
 import Dict exposing (Dict)
+import Match exposing (Token)
 
-type alias Values o = Dict String o
+type alias Values o = Dict String (Token o)
 
 type alias Position = ( Int, Int ) -- FIXME : Known ( Int, Int ) | Unknown | EndOfInput
 

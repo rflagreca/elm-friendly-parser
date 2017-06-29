@@ -6,7 +6,8 @@ module Match exposing
 -- FIXME: there should be an option of UserType contained in this type,
 -- this could allow us to get rid of Adapters and stuff
 type Token o =
-      Lexem String
+      NoLexem
+    | Lexem String
     | Tokens (List (Token o))
     | InRule String (Token o) -- FIXME: RuleName
     | Custom o
