@@ -7,7 +7,7 @@ import Operator exposing (..)
 import Utils exposing (..)
 import State exposing (..)
 import ParseResult exposing (..)
-import Adapter
+import Match
 
 zeroPos : Position
 zeroPos = (0, 0)

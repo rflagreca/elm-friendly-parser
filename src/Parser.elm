@@ -10,7 +10,7 @@ module Parser exposing
 
 import Dict exposing (..)
 
-import Adapter exposing (Adapter)
+import Match exposing (Adapter)
 import Operator exposing
     ( Operator
     , execute

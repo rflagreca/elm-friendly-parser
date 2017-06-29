@@ -22,7 +22,7 @@ type alias State o =
     , inputLength: Int
     , position: Int
     , values: Values o
-}
+    }
 
 init : String -> State o
 init input =

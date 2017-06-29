@@ -32,10 +32,10 @@ module BasicParser.Parser exposing
     , InputType
 
 -}
-import Parser as Parser exposing (..)
-import Operator as Operator exposing (..)
-import ParseResult as ParseResult exposing (..)
-import Adapter as Adapter exposing (..)
+import Parser exposing (..)
+import Operator exposing (..)
+import ParseResult exposing (..)
+import Match exposing (..)
 
 {-| TODO -}
 type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
@@ -50,7 +50,7 @@ type alias Grammar = Operator.Grammar ReturnType
 {-| TODO -}
 type alias Rules = Operator.Rules ReturnType
 {-| TODO -}
-type alias InputType = Adapter.InputType ReturnType
+type alias Token = Match.Token ReturnType
 
 {-| TODO -}
 type alias ParseResult = ParseResult.ParseResult ReturnType

@@ -17,7 +17,7 @@ import State exposing
     , Position
     , findPosition
     )
-import Adapter exposing (Adapter)
+import Match exposing (Adapter, Token(..))
 import Action exposing
     ( ActionResult(..)
     , PrefixActionResult(..)
@@ -29,7 +29,6 @@ import ParseResult exposing
     , FailureReason(..)
     , Sample(..)
     )
-import Adapter exposing (InputType(..))
 
 type alias RuleName = String
 type alias Rule o = ( RuleName, Operator o )
@@ -427,21 +426,21 @@ matched val ctx =
     let
         ( adapter, _, _ ) = ctx
     in
-        matchedWith (adapter (AValue val)) ctx
+        matchedWith (adapter (Match val)) ctx
 
-matchedList : List o -> Context o -> OperatorResult o
-matchedList val ctx =
+matchedList : List (Token o) -> Context o -> OperatorResult o
+matchedList vals ctx =
     let
         ( adapter, _, _ ) = ctx
     in
-        matchedWith (adapter (AList val)) ctx
+        matchedWith (adapter (Tokens vals)) ctx
 
 matchedRule : RuleName -> o -> Context o -> OperatorResult o
 matchedRule ruleName value ctx =
     let
         ( adapter, parser, _ ) = ctx
     in
-        matchedWith (adapter (ARule ruleName value)) ctx
+        matchedWith (adapter (InRule ruleName value)) ctx
 
 -- matchedFlatList : List o -> Context o -> OperatorResult o
 -- matchedFlatList val ctx =

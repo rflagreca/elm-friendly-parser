@@ -4,7 +4,7 @@ import Test exposing (..)
 
 import Parser exposing (..)
 import Operator exposing (..)
-import Adapter
+import Match
 import ParseResult exposing (..)
 import Action exposing (..)
 

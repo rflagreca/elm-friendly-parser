@@ -2,7 +2,7 @@ module Samples.ArithmeticsParser exposing (..)
 
 import Parser exposing (..)
 import Operator exposing (..)
-import Adapter
+import Match
 import State exposing (..)
 import Action exposing (..)
 

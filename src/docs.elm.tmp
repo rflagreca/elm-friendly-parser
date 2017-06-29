@@ -81,6 +81,8 @@ For now, `Parser.parse` actually returns the pair of `(ParseResult, Maybe Positi
 
 There is no requirement to have only one Rule, you may have dozens of them and you may call any by its name with [`call` Operator](TODO),but only one Rule may trigger the parsing process: The Start Rule. To build your own set of rules, not just a Start Rule, you'll need some other [initialization](#Initialization) methods:
 
+TODO: actually you may just use functions as a replacement for rules:
+
 For example, [`Parser.withRules`](TODO) allows you to define all the rules as a list:
 
     BasicParser.withRules

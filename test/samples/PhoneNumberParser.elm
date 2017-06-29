@@ -2,7 +2,7 @@ module Samples.PhoneNumberParser exposing (init)
 
 import Parser exposing (..)
 import Operator exposing (..)
-import Adapter
+import Match
 
 type alias ReturnType = String
 

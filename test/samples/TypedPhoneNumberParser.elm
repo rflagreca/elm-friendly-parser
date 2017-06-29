@@ -3,7 +3,7 @@ module Samples.TypedPhoneNumberParser exposing (..)
 import Parser exposing (..)
 import Operator exposing (..)
 import Action exposing (..)
-import Adapter
+import Match
 
 type PhoneNumberPart =
     AString String
