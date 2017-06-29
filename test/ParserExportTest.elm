@@ -8,8 +8,8 @@ import Operator exposing (..)
 import ParseResult exposing (..)
 import Export as Export exposing (..)
 
-import BasicParser.Parser as BP exposing (..)
-import BasicParser.Export as BPExport exposing (..)
+import StringParser.Parser as BP exposing (..)
+import StringParser.Export as BPExport exposing (..)
 import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
 
 suite : Test

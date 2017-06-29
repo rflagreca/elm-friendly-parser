@@ -10,7 +10,6 @@ module Parser exposing
 
 import Dict exposing (..)
 
-import Match exposing (Adapter)
 import Operator exposing
     ( Operator
     , execute
@@ -37,15 +36,13 @@ import ParseResult exposing
 import Match exposing (Token)
 
 type alias Parser o =
-    { adapt: Adapter o
-    , rules: Grammar o
+    { grammar: Grammar o
     , startRule: String
     }
 
-init : Adapter o -> Parser o
-init adapter =
-    { adapt = adapter
-    , rules = noRules
+init : Parser o
+init =
+    { grammar = noRules
     , startRule = "start"
     }
 
@@ -56,7 +53,7 @@ parse : String -> Parser o -> ParseResult o
 parse input parser =
     let
         state = (State.init input)
-        context = (parser.rules, state)
+        context = (parser.grammar, state)
     in
         case getStartRule parser of
             Just startOperator ->
@@ -79,14 +76,14 @@ parse input parser =
 
 withRules : Rules o -> Parser o -> Parser o
 withRules rules parser =
-    { parser | rules = Dict.fromList rules }
+    { parser | grammar = Dict.fromList rules }
     -- , startRule = case List.head rules of
     --     Just ( name, _ ) -> name
     --     Nothing -> "start"
 
-start : Operator o -> Adapter o -> Parser o
-start op adapter =
-    init adapter |> startWith op
+start : Operator o -> Parser o
+start op =
+    init |> startWith op
 
 startWith : Operator o -> Parser o -> Parser o
 startWith op parser =
@@ -97,7 +94,7 @@ addStartRule = startWith
 
 getStartRule : Parser o -> Maybe (Operator o)
 getStartRule parser =
-    Dict.get parser.startRule parser.rules
+    Dict.get parser.startRule parser.grammar
 
 setStartRule : RuleName -> Parser o -> Parser o
 setStartRule name parser =
@@ -105,11 +102,11 @@ setStartRule name parser =
 
 addRule : RuleName -> Operator o -> Parser o -> Parser o
 addRule name op parser =
-    { parser | rules = parser.rules |> Dict.insert name op }
+    { parser | grammar = parser.grammar |> Dict.insert name op }
 
 getRule : RuleName -> Parser o -> Maybe (Operator o)
 getRule name parser =
-    Dict.get name parser.rules
+    Dict.get name parser.grammar
 
 -- UTILS
 

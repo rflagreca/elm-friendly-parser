@@ -10,7 +10,7 @@ module Parser exposing
     , Operator(..), State
     )
 
-{-| This parser is different to [`elm-tools/parser`](https://github.com/elm-tools/parser) which I was unaware about, at first. You may find the other one more elegant, while this one could be considered more academic. Still you are free to chose any way closer to your heart.
+{-| This parser is different to [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-tools/parser/latest) which I was unaware about, at first. You may find the other one more elegant, while this one could be considered more academic or traditional. Also, this one is rather a continue of an [experiment with JavaScript functional PEG parser](). Still you are free to chose any way closer to your heart, they are actually very different.
 
 # Parsing
 

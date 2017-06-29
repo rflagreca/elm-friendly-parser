@@ -1,4 +1,4 @@
-module BasicParser.Export exposing
+module StringParser.Export exposing
     ( failureReason
     , parseResult
     )
@@ -9,7 +9,7 @@ module BasicParser.Export exposing
 
 -}
 
-import BasicParser.Parser as BasicParser exposing (..)
+import StringParser.Parser as StringParser exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)
 
@@ -70,7 +70,7 @@ failureReason failure =
                 expectationStr ++ ", however " ++ sampleStr
 
 {-| TODO -}
-parseResult : BasicParser.ParseResult -> String
+parseResult : StringParser.ParseResult -> String
 parseResult result =
      case result of
         Matched value -> "\nMatched " ++ (returnType value) ++ ".\n"
@@ -85,15 +85,15 @@ parseResult result =
             in
                 "\nFailed at " ++ positionStr ++ "\n\n" ++ (failureReason failure) ++ ".\n"
 
-operator : BasicParser.Operator -> String
+operator : StringParser.Operator -> String
 operator op =
     "TODO"
 
-rules : BasicParser.Rules -> String
+rules : StringParser.Rules -> String
 rules rules =
     "TODO"
 
-parser : BasicParser.BasicParser -> String
+parser : StringParser.StringParser -> String
 parser parser =
     "TODO"
 

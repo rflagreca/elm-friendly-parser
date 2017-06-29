@@ -61,8 +61,8 @@ isNotParsed result =
         Failed _ _ -> True
 
 
-isParsedAs : String -> ParseResult o -> Bool
-isParsedAs subject result =
-    case result of
-        Matched s -> (toString s == subject)
-        Failed _ _ -> False
+-- isParsedAs : String -> ParseResult o -> Bool
+-- isParsedAs subject result =
+--     case result of
+--         Matched s -> (toString s == subject)
+--         Failed _ _ -> False

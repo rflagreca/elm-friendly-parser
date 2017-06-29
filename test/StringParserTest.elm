@@ -1,4 +1,4 @@
-module BasicParserTest exposing (suite)
+module StringParserTest exposing (suite)
 
 import Dict
 
@@ -10,7 +10,7 @@ import Operator exposing (..)
 import Action exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)
-import BasicParser.Parser as BasicParser exposing (..)
+import StringParser.Parser as StringParser exposing (..)
 
 import Utils exposing (..)
 
@@ -36,15 +36,15 @@ suite =
         , testReportingPosition
         ]
 
--- (-<) : BasicParser.Operator -> BasicParser
+-- (-<) : StringParser.Operator -> StringParser
 -- (-<) op =
---     BasicParser.start <| op
+--     StringParser.start <| op
 
 testStartRule : Test
 testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
-            (BasicParser.init
+            (StringParser.init
                 |> expectToFailToParseWith
                     "foo"
                     (Failed NoStartRule (0, 0)))
@@ -55,22 +55,22 @@ testBasicMatching : Test
 testBasicMatching =
     describe "basic matching"
         [ test "matches simple string" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 (match "abc"))
                 |> expectToParse
                     "abc"
                     "abc")
         , test "not matches a string when it is unequeal to the one expected" <|
-            ((BasicParser.start <| (match "abc"))
+            ((StringParser.start <| (match "abc"))
                 |> expectToFailToParse "ab")
         , test "fails when input end wasn't reached" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 (match "ab"))
                 |> expectToFailToParseWith
                     "abc"
                     (Failed (ByExpectation (ExpectedEndOfInput, GotValue "c")) (0, 2)))
         , test "reports the failed match properly" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 (match "foo"))
                 |> expectToFailToParseWith
                     "for"
@@ -83,7 +83,7 @@ testChoiceMatching =
     describe "`choice` matching"
         [ test "matches correctly" <|
             let
-                parser = BasicParser.start <| choice [ match "a", match "b", match "c" ]
+                parser = StringParser.start <| choice [ match "a", match "b", match "c" ]
             in
                 Expect.all
                     [ parser |> expectToParse "a" "a"
@@ -92,7 +92,7 @@ testChoiceMatching =
                     , parser |> expectToFailToParse "d"
                     ]
         , test "fails correctly" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 choice [ match "a", match "b", match "c" ])
                 |> expectToFailToParseWith
                     "foo"
@@ -104,19 +104,19 @@ testChoiceMatching =
                         (GotValue "f")
                         (0, 0)))
         , test "gets first matching result" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 choice [ match "foo", match "f" ])
                 |> expectToParse
                     "foo"
                     "foo")
         , test "gets first matching result in a chain" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 choice [ match "a", match "foo", match "f" ])
                 |> expectToParse
                     "foo"
                     "foo")
         , test "properly advances position" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 getPositionAfter
                     (choice [ match "foo", match "bars" ]))
                 |> expectToParse
@@ -128,17 +128,17 @@ testSequenceMatching : Test
 testSequenceMatching =
     describe "`seqnc` matching"
         [ test "matches correctly" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "f", match "o", match "o" ])
                 |> expectToParseNested
                     "foo"
                     [ "f", "o", "o" ])
         , test "fails if one of the operators fails" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "f", match "o", match "p" ])
                 |> expectToFailToParse "foo")
         , test "fails correctly" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "f", match "o", match "p" ])
                 |> expectToFailToParseWith
                 "foo"
@@ -149,19 +149,19 @@ testMaybeMatching : Test
 testMaybeMatching =
     describe "`maybe` matching"
         [ test "matches when sample exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "f", match "o", maybe (match "o") ])
                 |> expectToParseNested
                     "foo"
                     [ "f", "o", "o" ])
         , test "matches when sample not exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "f", match "o", maybe (match "o") ])
                 |> expectToParseNested
                     "fo"
                     [ "f", "o", "" ])
         , test "matches when sample not exists, p. II" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "f", match "o", maybe (match "p"), match "o" ])
                 |> expectToParseNested
                     "foo"
@@ -172,20 +172,20 @@ testTextMatching : Test
 testTextMatching =
     describe "`text` matching"
         [ test "matches when sample exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 text (seqnc [ match "f", match "o", match "o" ]))
                 |> expectToParse
                     "foo"
                     "foo")
 
         , test "still matches when a part of a sample not exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 text (seqnc [ match "f", match "o", maybe (match "o") ]))
                 |> expectToParse
                     "fo"
                     "fo")
         , test "fails when nested operator is not matching" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 text ( seqnc [ match "f", match "o", match "o" ]))
                 |> expectToFailToParseWith
                     "bar"
@@ -196,31 +196,31 @@ testAnyMatching : Test
 testAnyMatching =
     describe "`any` matching"
         [ test "matches when sample exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 any (match "f"))
                 |> expectToParseNested
                     "f"
                     [ "f" ])
         , test "matches when sample exists several times" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 any (match "f"))
                 |> expectToParseNested
                     "fff"
                     [ "f", "f", "f" ])
         , test "matches empty list when there were no matches" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 any (match "f"))
                 |> expectToParseNested
                     ""
                     [ ])
         , test "still matches when sample is not exits" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ any (match "f"), match "bar" ])
                 |> expectToParseWith
                     "bar"
                     (Matched (RList ([RList [], RString "bar"]))))
         , test "properly advances the position" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 getPositionAfter ( any (match "f") ))
                 |> expectToParse
                     "ffff"
@@ -231,19 +231,19 @@ testSomeMatching : Test
 testSomeMatching =
     describe "`some` matching"
         [ test "matches when sample exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 some (match "f"))
                 |> expectToParseNested
                     "f"
                     [ "f" ])
         , test "matches when sample exists several times" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 some (match "f"))
                 |> expectToParseNested
                     "fff"
                     [ "f", "f", "f" ])
         , test "keeps the order of occurences" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 some
                     (choice
                         [ match "a"
@@ -255,13 +255,13 @@ testSomeMatching =
                     "abc"
                     [ "a", "b", "c" ])
         , test "properly advances position" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 getPositionAfter (some (match "f")))
                 |> expectToParse
                     "fff"
                     "3")
         , test "not matches when sample is not exits" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ some (match "f"), match "bar" ])
                 |> expectToFailToParseWith
                     "bar"
@@ -272,13 +272,13 @@ testAndMatching : Test
 testAndMatching =
     describe "`and` matching"
         [ test "matches when sample exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ Operator.and (match "foo"), match "foobar" ])
                 |> expectToParseNested
                     "foobar"
                     [ "", "foobar" ])
         , test "fails when sample not exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ Operator.and (match "foo"), match "barfoo" ])
                 |> expectToFailToParseWith
                     "barfoo"
@@ -289,13 +289,13 @@ testNotMatching : Test
 testNotMatching =
     describe "`not` matching"
         [ test "fails when sample exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ Operator.not (match "foo"), match "foobar" ])
                 |> expectToFailToParseWith
                     "foobar"
                     (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "matches when sample not exists" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ Operator.not (match "foo"), match "barfoo" ])
                 |> expectToParseNested
                     "barfoo"
@@ -306,36 +306,36 @@ testActionMatching : Test
 testActionMatching =
     describe "`action` matching"
         [ test "allows executing user-defined code" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 action (match "foo")
-                    (\match ctx -> Pass (BasicParser.RString "magic")))
+                    (\match ctx -> Pass (StringParser.RString "magic")))
                 |> expectToParse
                     "foo"
                     "magic")
         , test "provides access to the matched chunk" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 action (match "foo")
                     (\match ctx ->
                         case match of
-                            BasicParser.RString str ->
-                                Pass (BasicParser.RString (str ++ "magic"))
+                            StringParser.RString str ->
+                                Pass (StringParser.RString (str ++ "magic"))
                             _ -> Pass match))
                 |> expectToParse
                     "foo"
                     "foomagic")
         , test "provides access to the position" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 action (match "foo")
                     (\match state ->
                         case match of
-                            BasicParser.RString str ->
-                                Pass (BasicParser.RString (Basics.toString (state.position)))
+                            StringParser.RString str ->
+                                Pass (StringParser.RString (Basics.toString (state.position)))
                             _ -> Pass match))
                 |> expectToParse
                     "foo"
                     "3")
         , test "fails when user-code returned failure even when match was successful by itself" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 action (match "foo")
                     (\match ctx -> Fail))
                 |> expectToFailToParseWith
@@ -348,7 +348,7 @@ testPreMatching : Test
 testPreMatching =
     describe "`pre` matching"
         [ test "allows executing user-defined code and passes when it returned True" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ pre (\_ -> Continue)
                     , (match "foo")
@@ -357,7 +357,7 @@ testPreMatching =
                     "foo"
                     [ "", "foo" ])
         , test "fails when user-code returned False" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ pre (\_ -> Halt)
                     , (match "foo")
@@ -366,7 +366,7 @@ testPreMatching =
                     "foo"
                     (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "provides access to the position" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ pre (\state -> if state.position == 0 then Continue else Halt)
                     , (match "foo")
@@ -380,7 +380,7 @@ testNegPreMatching : Test
 testNegPreMatching =
     describe "`xpre` matching"
         [ test "allows executing user-defined code and passes when it returned False" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ xpre (\_ -> Halt)
                     , (match "foo")
@@ -389,7 +389,7 @@ testNegPreMatching =
                     "foo"
                     [ "", "foo" ])
         , test "fails when user-code returned True" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ xpre (\_ -> Continue)
                     , (match "foo")
@@ -398,7 +398,7 @@ testNegPreMatching =
                     "foo"
                     (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "provides access to the position" <|
-            ((BasicParser.start
+            ((StringParser.start
                 <| seqnc
                     [ xpre (\state -> if state.position /= 0 then Continue else Halt)
                     , (match "foo")
@@ -412,13 +412,13 @@ testLabelMatching : Test
 testLabelMatching =
     describe "`label` matching"
         [ test "works transparently for a parser" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 label "bar" (match "foo"))
                 |> expectToParse
                     "foo"
                     "foo")
         , test "actually stores the value under the given name" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ label "xyz" (match "foo")
                     , match "bar"
@@ -428,11 +428,11 @@ testLabelMatching =
                     "foobarx"
                     [ "foo", "bar", "foo" ])
         , test "still fails when match failed" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 label "xyz" (match "for"))
                 |> expectToFailToParse "foo")
         , test "labels keep the context level when executed in the action call" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc
                     [ label "a" (match "foo")
                     , getLabelValueOrFail "a"
@@ -452,25 +452,25 @@ testREMatching : Test
 testREMatching =
     describe "`re` matching"
         [ test "properly uses regular expressions to parse text" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 re "f?oo")
                 |> expectToParse
                     "foo"
                     "foo")
         , test "can parse sequences of symbols" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 some (re "[0-9]"))
                 |> expectToParseNested
                     "249"
                     [ "2", "4", "9" ])
         , test "properly advances the position" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 getPositionAfter (some (re "[0-9]")))
                 |> expectToParse
                     "2495"
                     "4")
         , test "fails when regular expression is not matching" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 redesc "f?oo" "foo regex")
                 |> expectToFailToParseWith
                     "boo"
@@ -483,7 +483,7 @@ testDefiningAndCallingRules =
         [ test "user should be able to add custom rules" <|
             let
                 ruleSpec = match "foo"
-                parser = BasicParser.withRules
+                parser = StringParser.withRules
                     [ ( "test", ruleSpec )
                     ]
             in
@@ -492,18 +492,18 @@ testDefiningAndCallingRules =
                         (Just ruleSpec)
                         (parser |> Parser.getRule "test"))
         , test "user should be able to call rules by name" <|
-            (BasicParser.withRules
+            (StringParser.withRules
                 [ ( "test", match "foo" )
                 , ( "start", call "test" )
                 ]
                 |> expectToParseAsRule "foo" "foo" "test")
         , test "user should be able to call rules by name, v.2" <|
-            (BasicParser.withRules
+            (StringParser.withRules
                 [ ( "test", match "foo" ) ]
                 |> Parser.startWith (call "test")
                 |> expectToParseAsRule "foo" "foo" "test")
         , test "match should contain a rule name" <|
-            (BasicParser.withRules
+            (StringParser.withRules
                 [ ( "test", match "foo" ) ]
                 |> Parser.startWith (call "test")
                 |> expectToMatchWith
@@ -511,7 +511,7 @@ testDefiningAndCallingRules =
                         (RRule "test" (RString "foo")))
 
         , test "failure contains failed rule information" <|
-            (BasicParser.withRules
+            (StringParser.withRules
                 [ ( "test", match "foo" ) ]
                 |> Parser.startWith (call "test")
                 |> expectToFailToParseWith
@@ -526,19 +526,19 @@ testReportingPosition : Test
 testReportingPosition =
     describe "test reporting position"
         [ test "no position is passed when match was successful" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 match "foo")
                 |> expectToParseWith
                     "foo"
-                    (Matched (BasicParser.RString "foo")))
+                    (Matched (StringParser.RString "foo")))
         , test "properly reports position of the failure" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "fo", match "x" ])
                 |> expectToFailToParseAt
                     "foo"
                     (0, 2))
         , test "properly reports position of the failure even for a multiline input" <|
-            ((BasicParser.start <|
+            ((StringParser.start <|
                 seqnc [ match "foo", re "[\n]", match "ba", match "x" ])
                 |> expectToFailToParseAt
                     "foo\nbar"
@@ -549,7 +549,7 @@ testReportingPosition =
 
 -- UTILS
 
-nestedFailureOf : List (String, Sample) -> Sample -> Position -> BasicParser.ParseResult
+nestedFailureOf : List (String, Sample) -> Sample -> Position -> StringParser.ParseResult
 nestedFailureOf strings sample position =
     Failed (FollowingNestedOperator
         (List.foldl
@@ -559,30 +559,30 @@ nestedFailureOf strings sample position =
             strings
         , sample)) position
 
-expectToParse : String -> String -> BasicParser -> (() -> Expect.Expectation)
+expectToParse : String -> String -> StringParser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     parser |> expectToParseWith
         input
-        (Matched (BasicParser.RString output))
+        (Matched (StringParser.RString output))
 
-expectToParseAsRule : String -> String -> String -> BasicParser -> (() -> Expect.Expectation)
+expectToParseAsRule : String -> String -> String -> StringParser -> (() -> Expect.Expectation)
 expectToParseAsRule input output ruleName parser =
     parser |> expectToParseWith
         input
-        (Matched (BasicParser.RRule ruleName (BasicParser.RString output)))
+        (Matched (StringParser.RRule ruleName (StringParser.RString output)))
 
-expectToParseNested : String -> List String -> BasicParser -> (() -> Expect.Expectation)
+expectToParseNested : String -> List String -> StringParser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
     parser |> expectToParseWith
         input
-        (Matched (BasicParser.RList
+        (Matched (StringParser.RList
                 (chunks |> List.map (\chunk -> RString chunk))))
 
-getPositionAfter : BasicParser.Operator -> BasicParser.Operator
+getPositionAfter : StringParser.Operator -> StringParser.Operator
 getPositionAfter op =
-    action op (\_ state -> Pass (BasicParser.RString (toString state.position)))
+    action op (\_ state -> Pass (StringParser.RString (toString state.position)))
 
-getLabelValueOrFail : String -> BasicParser.Operator -> BasicParser.Operator
+getLabelValueOrFail : String -> StringParser.Operator -> StringParser.Operator
 getLabelValueOrFail label op =
     action op
         (\val state ->
@@ -590,10 +590,10 @@ getLabelValueOrFail label op =
                 Just val -> Pass val
                 Nothing -> Fail)
 
-failIfLabelHasValue : String -> String -> BasicParser.Operator -> BasicParser.Operator
+failIfLabelHasValue : String -> String -> StringParser.Operator -> StringParser.Operator
 failIfLabelHasValue label successVal op =
     action op
         (\val state ->
             case Dict.get label state.values of
                 Just _ -> Fail
-                Nothing -> Pass (BasicParser.RString successVal))
+                Nothing -> Pass (StringParser.RString successVal))

@@ -1,9 +1,9 @@
-module BasicParser.Parser exposing
-    ( BasicParser
+module StringParser.Parser exposing
+    ( Parser
     , init, start, withRules
     , ParseResult
-    , ReturnType(..)
-    , Grammar, Rules, Operator, InputType
+    , ReturnType
+    , Grammar, Rules, Operator, Token
     )
 
 {-| TODO
@@ -38,10 +38,10 @@ import ParseResult exposing (..)
 import Match exposing (..)
 
 {-| TODO -}
-type ReturnType = RString String | RList (List ReturnType) | RRule RuleName ReturnType
+type ReturnType = Chunk String | Chunks (List String)
 
 {-| TODO -}
-type alias BasicParser = Parser.Parser ReturnType
+type alias Parser = Parser.Parser ReturnType
 
 {-| TODO -}
 type alias Operator = Operator.Operator ReturnType
@@ -56,14 +56,12 @@ type alias Token = Match.Token ReturnType
 type alias ParseResult = ParseResult.ParseResult ReturnType
 
 {-| TODO -}
-init : BasicParser
-init =
-    Parser.init adapter
+init : Parser
+init = Parser.init
 
 {-| TODO -}
-start : Operator -> BasicParser
-start op =
-    Parser.start op adapter
+start : Operator -> Parser
+start = Parser.start
 
 -- startWith : Operator -> BasicParser -> BasicParser
 -- startWith = Parser.startWith
@@ -75,12 +73,15 @@ start op =
 -- parse = Parser.parse
 
 {-| TODO -}
-withRules : Rules -> BasicParser
+withRules : Rules -> Parser
 withRules rules = init |> Parser.withRules rules
 
-adapter : InputType -> ReturnType
-adapter input =
-    case input of
-        Adapter.AValue str -> RString str
-        Adapter.AList list -> RList list
-        Adapter.ARule name value -> RRule name value
+{-
+adapter : Token -> ReturnType
+adapter token =
+    case token of
+        Match.NoLexem -> Chunk ""
+        Match.Lexem str -> Chunk str
+        Match.Tokens tokens -> Chunks (List.map adapter tokens)
+        _ -> Chunk ""
+-}
