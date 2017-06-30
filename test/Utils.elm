@@ -2,13 +2,14 @@ module Utils exposing (..)
 
 import Parser exposing (..)
 import ParseResult exposing (..)
+import Match exposing (..)
 import State exposing (Position)
 
 import Expect
 
-expectToParse : String -> o -> Parser o -> (() -> Expect.Expectation)
-expectToParse input output parser =
-    parser |> expectToParseWith input (Matched output)
+-- expectToParse : String -> String -> Parser String -> (() -> Expect.Expectation)
+-- expectToParse input output parser =
+--     parser |> expectToParseWith input (Matched (Custom output))
 
 expectToParseWith : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
 expectToParseWith input result parser =
@@ -21,7 +22,7 @@ expectToMatchWith : String -> o -> Parser o -> (() -> Expect.Expectation)
 expectToMatchWith input value parser =
     parser |> expectToParseWith
         input
-        (Matched value)
+        (Matched (Custom value))
 
 expectToFailToParse : String -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParse input parser =

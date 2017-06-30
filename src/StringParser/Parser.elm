@@ -2,7 +2,7 @@ module StringParser.Parser exposing
     ( Parser
     , init, start, withRules
     , ParseResult
-    , ReturnType
+    , ReturnType(..)
     , Grammar, Rules, Operator, Token
     )
 

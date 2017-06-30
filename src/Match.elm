@@ -3,8 +3,6 @@ module Match exposing
     , Adapter
     )
 
--- FIXME: there should be an option of UserType contained in this type,
--- this could allow us to get rid of Adapters and stuff
 type Token o =
       NoLexem
     | Lexem String

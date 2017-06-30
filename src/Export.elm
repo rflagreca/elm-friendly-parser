@@ -58,4 +58,4 @@ rules r =
 {-| TODO -}
 parser : Parser o -> String
 parser p =
-    rules p.rules
+    rules p.grammar

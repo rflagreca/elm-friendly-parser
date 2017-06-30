@@ -12,16 +12,16 @@ module StringParser.Export exposing
 import StringParser.Parser as StringParser exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)
+import Match exposing (..)
 
 repoIssuesUrl : String
 repoIssuesUrl = "https://github.com/shamansir/elm-friendly-parser/issues"
 
-returnType : ReturnType -> String
+returnType : StringParser.ReturnType -> String
 returnType value =
     case value of
-        RString str -> "\"" ++ str ++ "\""
-        RList list -> "[ " ++ (String.join ", " (List.map returnType list)) ++ " ]"
-        RRule name value -> name ++ ": " ++ (returnType value)
+        StringParser.Chunk str -> "\"" ++ str ++ "\""
+        StringParser.Chunks list -> "[ " ++ (String.join ", " list) ++ " ]"
 
 -- sample : Parser.Sample -> String
 -- sample s =
@@ -30,7 +30,7 @@ returnType value =
 --         Parser.GotEndOfInput -> "got end of input"
 
 {-| TODO -}
-failureReason : FailureReason ReturnType -> String
+failureReason : FailureReason StringParser.ReturnType -> String
 failureReason failure =
     case failure of
         NoStartRule ->
@@ -69,11 +69,21 @@ failureReason failure =
             in
                 expectationStr ++ ", however " ++ sampleStr
 
+token : StringParser.Token -> String
+token aToken =
+    case aToken of
+        NoLexem -> "Nothing"
+        Lexem str -> "\"" ++ str ++ "\""
+        Tokens tokens ->  "[ " ++ (String.join ", " (List.map token tokens)) ++ " ]"
+        InRule ruleName innerToken -> ruleName ++ ": " ++ (token innerToken)
+        Custom str -> returnType str
+
 {-| TODO -}
 parseResult : StringParser.ParseResult -> String
 parseResult result =
      case result of
-        Matched value -> "\nMatched " ++ (returnType value) ++ ".\n"
+        Matched value ->
+            "\nMatched " ++ (token value) ++ ".\n"
         Failed failure position ->
             let
                 positionStr =
@@ -93,7 +103,7 @@ rules : StringParser.Rules -> String
 rules rules =
     "TODO"
 
-parser : StringParser.StringParser -> String
+parser : StringParser.Parser -> String
 parser parser =
     "TODO"
 
