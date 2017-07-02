@@ -2,7 +2,7 @@ module Samples.ArithmeticsParser exposing (..)
 
 import Parser exposing (..)
 import Operator exposing (..)
-import Match
+import Match exposing (..)
 import State exposing (..)
 import Action exposing (..)
 
@@ -86,7 +86,7 @@ init =
 reduceAdditionAndSubtraction : ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =
     case triplet of
-        (AList (_::Operator op::_::ANumber v::_) ) ->
+        (Tokens (_::Lexem op::_::Number v::_) ) ->
             case op of
                 "+" -> sum + v
                 "-" -> sum - v
@@ -96,7 +96,7 @@ reduceAdditionAndSubtraction triplet sum =
 reduceMultiplicationAndDivision : ReturnType -> Float -> Float
 reduceMultiplicationAndDivision triplet sum =
     case triplet of
-        (AList (_::AString op::_::ANumber v::_) ) ->
+        (Tokens (_::Lexem op::_::Number v::_) ) ->
             case op of
                 "*" -> sum * v
                 "/" -> sum / v
@@ -107,9 +107,9 @@ reduceMultiplicationAndDivision triplet sum =
 integerAction : ReturnType -> State ReturnType -> ActionResult ReturnType
 integerAction source _ =
     case source of
-        AList maybeDigits ->
+        Tokens maybeDigits ->
             case digitsToFloat maybeDigits of
-                Just value -> Pass (ANumber value)
+                Just value -> Pass (Number value)
                 Nothing -> Fail
         _ -> Fail
 
@@ -124,8 +124,8 @@ expressionAction _ state =
         case ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
                 case ( head, tail ) of
-                    ( ANumber headNum, AList tailList ) ->
-                        Pass (ANumber (List.foldl reducer headNum tailList))
+                    ( Number headNum, Tokens tailList ) ->
+                        Pass (Number (List.foldl reducer headNum tailList))
                     _ -> Fail
             _ -> Fail
 
@@ -140,8 +140,8 @@ termAction _ state =
         case ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
                 case ( head, tail ) of
-                    ( ANumber headNum, AList tailList ) ->
-                        Pass (ANumber (List.foldl reducer headNum tailList))
+                    ( Number headNum, Tokens tailList ) ->
+                        Pass (Number (List.foldl reducer headNum tailList))
                     _ -> Fail
             _ -> Fail
 
@@ -161,7 +161,7 @@ digitsToFloat probablyDigits =
                 case prev of
                     Just prevDigits ->
                         case val of
-                            AString a ->
+                            Match.Lexem a ->
                                 Just (prevDigits ++ a)
                             _ -> Nothing
                     Nothing -> Nothing)
