@@ -38,7 +38,7 @@ import ParseResult exposing (..)
 import Match exposing (..)
 
 {-| TODO -}
-type ReturnType = Chunk String | Chunks (List String)
+type ReturnType = Chunk String | Chunks (List String) | ByRule String ReturnType
 
 {-| TODO -}
 type alias Parser = Parser.Parser ReturnType

@@ -8,11 +8,10 @@ import Action exposing (..)
 
 import Dict
 
+type OperatorKind = Add | Subtract | Multiply | Divide
+
 {- The possible ReturnType for this parser, just extends the basic types with `ANumber` -}
-type ReturnType =
-     AString String
-   | AList (List ReturnType)
-   | ANumber Float
+type ReturnType = Number Float | Operator OperatorKind
 
 {- The actual grammar for this parser. See `arithmetics.peg` in this directory for the source PEG Grammar -}
 rules : Rules ReturnType
@@ -80,25 +79,14 @@ rules =
 {- init and set start rule to "Expression" -}
 init : Parser ReturnType
 init =
-       Parser.init adapter
+       Parser.init
     |> Parser.withRules rules
     |> Parser.setStartRule "Expression"
-
-{- The adapter, which converts basic `InputType` to our `ReturnType`.
-Does nothing special here, since we only use extended `ANumber` type
-in actions. As an improvement, we also may store arithmetics operator:
-`+`, `-`, `/` or `*` -}
-adapter : Adapter.InputType ReturnType -> ReturnType
-adapter input =
-    case input of
-        Adapter.AValue str -> AString str
-        Adapter.AList list -> AList list
-        Adapter.ARule name value -> value
 
 reduceAdditionAndSubtraction : ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =
     case triplet of
-        (AList (_::AString op::_::ANumber v::_) ) ->
+        (AList (_::Operator op::_::ANumber v::_) ) ->
             case op of
                 "+" -> sum + v
                 "-" -> sum - v

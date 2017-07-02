@@ -218,7 +218,7 @@ testAnyMatching =
                 seqnc [ any (match "f"), match "bar" ])
                 |> expectToParseWith
                     "bar"
-                    (Matched (RList ([RList [], RString "bar"]))))
+                    (Matched (Chunk ([Chunks [], Chunk "bar"]))))
         , test "properly advances the position" <|
             ((StringParser.start <|
                 getPositionAfter ( any (match "f") ))
@@ -308,7 +308,7 @@ testActionMatching =
         [ test "allows executing user-defined code" <|
             ((StringParser.start <|
                 action (match "foo")
-                    (\match ctx -> Pass (StringParser.RString "magic")))
+                    (\match ctx -> Pass (Chunk "magic")))
                 |> expectToParse
                     "foo"
                     "magic")
@@ -317,8 +317,8 @@ testActionMatching =
                 action (match "foo")
                     (\match ctx ->
                         case match of
-                            StringParser.RString str ->
-                                Pass (StringParser.RString (str ++ "magic"))
+                            Chunk str ->
+                                Pass (Chunk (str ++ "magic"))
                             _ -> Pass match))
                 |> expectToParse
                     "foo"
@@ -328,8 +328,8 @@ testActionMatching =
                 action (match "foo")
                     (\match state ->
                         case match of
-                            StringParser.RString str ->
-                                Pass (StringParser.RString (Basics.toString (state.position)))
+                            Chunk str ->
+                                Pass (Chunk (Basics.toString (state.position)))
                             _ -> Pass match))
                 |> expectToParse
                     "foo"
@@ -508,7 +508,7 @@ testDefiningAndCallingRules =
                 |> Parser.startWith (call "test")
                 |> expectToMatchWith
                         "foo"
-                        (RRule "test" (RString "foo")))
+                        (Chunk "test" (Chunk "foo")))
 
         , test "failure contains failed rule information" <|
             (StringParser.withRules
@@ -530,7 +530,7 @@ testReportingPosition =
                 match "foo")
                 |> expectToParseWith
                     "foo"
-                    (Matched (StringParser.RString "foo")))
+                    (Matched (Chunk "foo")))
         , test "properly reports position of the failure" <|
             ((StringParser.start <|
                 seqnc [ match "fo", match "x" ])
@@ -559,28 +559,28 @@ nestedFailureOf strings sample position =
             strings
         , sample)) position
 
-expectToParse : String -> String -> StringParser -> (() -> Expect.Expectation)
+expectToParse : String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     parser |> expectToParseWith
         input
-        (Matched (StringParser.RString output))
+        (Matched (Chunk output))
 
-expectToParseAsRule : String -> String -> String -> StringParser -> (() -> Expect.Expectation)
+expectToParseAsRule : String -> String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParseAsRule input output ruleName parser =
     parser |> expectToParseWith
         input
-        (Matched (StringParser.RRule ruleName (StringParser.RString output)))
+        (Matched (InRule ruleName (Chunk output)))
 
-expectToParseNested : String -> List String -> StringParser -> (() -> Expect.Expectation)
+expectToParseNested : String -> List String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
     parser |> expectToParseWith
         input
-        (Matched (StringParser.RList
-                (chunks |> List.map (\chunk -> RString chunk))))
+        (Matched (Chunks
+                (chunks |> List.map (\chunk -> Chunk chunk))))
 
 getPositionAfter : StringParser.Operator -> StringParser.Operator
 getPositionAfter op =
-    action op (\_ state -> Pass (StringParser.RString (toString state.position)))
+    action op (\_ state -> Pass (Chunk (toString state.position)))
 
 getLabelValueOrFail : String -> StringParser.Operator -> StringParser.Operator
 getLabelValueOrFail label op =
@@ -596,4 +596,4 @@ failIfLabelHasValue label successVal op =
         (\val state ->
             case Dict.get label state.values of
                 Just _ -> Fail
-                Nothing -> Pass (StringParser.RString successVal))
+                Nothing -> Pass (Chunk successVal))
