@@ -17,7 +17,7 @@ type PhoneNumberPart =
     , local: (Int, Int, Int)
     }
 
-type ReturnType = PhoneNumberPart
+type alias ReturnType = PhoneNumberPart
 
 rules : Rules ReturnType
 rules =
@@ -64,17 +64,17 @@ rules =
       )
     ]
 
-init : Parser PhoneNumberPart
+init : Parser ReturnType
 init =
-       Parser.init adapter
+       Parser.init
     |> Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
 
-adapter : Match.Token PhoneNumberPart -> PhoneNumberPart
+adapter : Match.Token PhoneNumberPart -> ReturnType
 adapter result =
     case result of
-        _ -> Unknown
         Match.My v -> v
+        _ -> Unknown
 
 isAString : Match.Token PhoneNumberPart -> Bool
 isAString test =
@@ -82,7 +82,7 @@ isAString test =
         Match.Lexem _ -> True
         _ -> False
 
-digitsToInt : List PhoneNumberPart -> Maybe Int
+digitsToInt : List (Match.Token ReturnType) -> Maybe Int
 digitsToInt probablyDigits =
     let
         collapse =
@@ -102,10 +102,10 @@ digitsToInt probablyDigits =
 extractPrefix : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractPrefix source =
   case source of
-    AList vals ->
+    Match.Tokens vals ->
       if List.length vals == 2 then
         case vals of
-          (AString symbol)::(AList maybeDigits)::_ ->
+          (Match.Lexem symbol)::(Match.Tokens maybeDigits)::_ ->
             case digitsToInt maybeDigits of
                 Just value -> Pass (Prefix symbol value)
                 Nothing -> Fail
@@ -116,10 +116,10 @@ extractPrefix source =
 extractOperator : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractOperator source =
     case source of
-        AList vals ->
+        Match.Tokens vals ->
             if List.length vals == 3 then
                 case vals of
-                    _::(AList maybeDigits)::_ ->
+                    _::(Match.Tokens maybeDigits)::_ ->
                         case digitsToInt maybeDigits of
                             Just value -> Pass (Operator value)
                             Nothing -> Fail
@@ -130,10 +130,10 @@ extractOperator source =
 extractLocal : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractLocal source =
     case source of
-        AList vals ->
+        Match.Tokens vals ->
             if List.length vals == 5 then
                 case vals of
-                    (AList maybeDigits1)::_::(AList maybeDigits2)::_::(AList maybeDigits3)::_ ->
+                    (Match.Tokens maybeDigits1)::_::(Match.Tokens maybeDigits2)::_::(Match.Tokens maybeDigits3)::_ ->
                         case ( digitsToInt maybeDigits1
                              , digitsToInt maybeDigits2
                              , digitsToInt maybeDigits3
@@ -150,12 +150,12 @@ extractLocal source =
 extractPhoneNumber : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractPhoneNumber source =
     case source of
-        AList vals ->
+        Match.Tokens vals ->
             if List.length vals == 3 then
                 case vals of
-                    (Prefix symbol number)
-                  ::(Operator operatorNumber)
-                  ::(Local (local1, local2, local3))
+                    Match.My (Prefix symbol number)
+                  ::Match.My (Operator operatorNumber)
+                  ::Match.My (Local (local1, local2, local3))
                   ::_ ->
                         Pass
                             (PhoneNumber

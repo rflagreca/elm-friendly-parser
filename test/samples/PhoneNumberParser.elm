@@ -4,7 +4,6 @@ import Parser exposing (..)
 import Operator exposing (..)
 import Match
 import ParseResult exposing (..)
-
 type alias ReturnType = String
 
 rules : Rules ReturnType
