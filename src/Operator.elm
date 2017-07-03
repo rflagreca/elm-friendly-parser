@@ -325,7 +325,7 @@ execAction op userCode ctx =
         case result of
             Matched v ->
                 case (userCode v newState) of
-                    Pass userV -> resultingCtx |> matched (Custom userV)
+                    Pass userV -> resultingCtx |> matched (My userV)
                     PassThrough -> resultingCtx |> matched v
                     Fail -> resultingCtx |> failedCC ExpectedAnything
             Failed _ -> ( result, resultingCtx )

@@ -1,8 +1,10 @@
 module ParseResult exposing
     ( ParseResult(..)
+    , MyParseResult(..)
     , Expectation(..)
     , Sample(..)
     , FailureReason(..)
+    , toMyResult
     )
 
 import State exposing (Position)
@@ -30,3 +32,15 @@ type FailureReason o = -- FIXME: Remove `o`
 type ParseResult o =
       Matched (Token o)
     | Failed (FailureReason o) Position
+
+type MyParseResult o =
+      MatchedMy o
+    | FailedMy (FailureReason o) Position
+
+type alias Adapter o = (Token o -> o)
+
+toMyResult : Adapter o -> ParseResult o -> MyParseResult o
+toMyResult adapter result =
+    case result of
+        Matched token -> MatchedMy (adapter token)
+        Failed failure position -> FailedMy failure position

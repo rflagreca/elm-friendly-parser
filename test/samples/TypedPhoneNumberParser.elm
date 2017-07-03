@@ -4,10 +4,10 @@ import Parser exposing (..)
 import Operator exposing (..)
 import Action exposing (..)
 import Match
+import ParseResult exposing (..)
 
 type PhoneNumberPart =
-    AString String
-  | AList (List PhoneNumberPart)
+    Unknown
   | Prefix String Int
   | Operator Int
   | Local (Int, Int, Int)
@@ -19,7 +19,7 @@ type PhoneNumberPart =
 
 type ReturnType = PhoneNumberPart
 
-rules : Rules PhoneNumberPart
+rules : Rules ReturnType
 rules =
     [ ( "phoneNumber"
       , action
@@ -70,17 +70,16 @@ init =
     |> Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
 
-adapter : Adapter.InputType PhoneNumberPart -> PhoneNumberPart
-adapter input =
-    case input of
-        Adapter.AValue str -> AString str
-        Adapter.AList list -> AList list
-        Adapter.ARule name value -> value
+adapter : Match.Token PhoneNumberPart -> PhoneNumberPart
+adapter result =
+    case result of
+        _ -> Unknown
+        Match.My v -> v
 
-isAString : PhoneNumberPart -> Bool
+isAString : Match.Token PhoneNumberPart -> Bool
 isAString test =
     case test of
-        AString _ -> True
+        Match.Lexem _ -> True
         _ -> False
 
 digitsToInt : List PhoneNumberPart -> Maybe Int
@@ -91,7 +90,7 @@ digitsToInt probablyDigits =
                 case prev of
                     Just prevDigits ->
                         case val of
-                            AString a ->
+                            Match.Lexem a ->
                                 Just (prevDigits ++ a)
                             _ -> Nothing
                     Nothing -> Nothing)
@@ -100,7 +99,7 @@ digitsToInt probablyDigits =
             Just digitsString -> String.toInt digitsString |> Result.toMaybe
             Nothing -> Nothing
 
-extractPrefix : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractPrefix : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractPrefix source =
   case source of
     AList vals ->
@@ -114,7 +113,7 @@ extractPrefix source =
       else Fail
     _ -> Fail
 
-extractOperator : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractOperator : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractOperator source =
     case source of
         AList vals ->
@@ -128,7 +127,7 @@ extractOperator source =
             else Fail
         _ -> Fail
 
-extractLocal : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractLocal : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractLocal source =
     case source of
         AList vals ->
@@ -148,7 +147,7 @@ extractLocal source =
             else Fail
         _ -> Fail
 
-extractPhoneNumber : PhoneNumberPart -> ActionResult PhoneNumberPart
+extractPhoneNumber : Match.Token PhoneNumberPart -> ActionResult PhoneNumberPart
 extractPhoneNumber source =
     case source of
         AList vals ->

@@ -76,7 +76,7 @@ token aToken =
         Lexem str -> "\"" ++ str ++ "\""
         Tokens tokens ->  "[ " ++ (String.join ", " (List.map token tokens)) ++ " ]"
         InRule ruleName innerToken -> ruleName ++ ": " ++ (token innerToken)
-        Custom str -> returnType str
+        My str -> returnType str
 
 {-| TODO -}
 parseResult : StringParser.ParseResult -> String

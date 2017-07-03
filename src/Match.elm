@@ -8,6 +8,6 @@ type Token o =
     | Lexem String
     | Tokens (List (Token o))
     | InRule String (Token o) -- FIXME: RuleName
-    | Custom o
+    | My o
 
 type alias Adapter o = (Token o -> o)

@@ -3,6 +3,7 @@ module Samples.PhoneNumberParser exposing (init)
 import Parser exposing (..)
 import Operator exposing (..)
 import Match
+import ParseResult exposing (..)
 
 type alias ReturnType = String
 
@@ -41,13 +42,21 @@ rules =
 
 init : Parser ReturnType
 init =
-       Parser.init adapter
+       Parser.init
     |> Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
 
-adapter : Adapter.InputType ReturnType -> ReturnType
+parse : String -> MyParseResult ReturnType
+parse input =
+  Parser.init
+    |> Parser.parse input
+    |> toMyResult adapter
+
+adapter : Match.Token ReturnType -> ReturnType
 adapter input =
     case input of
-        Adapter.AValue str -> str
-        Adapter.AList list -> String.join "" list
-        Adapter.ARule name value -> name ++ ":" ++ value ++ ";"
+        Match.NoLexem -> ""
+        Match.Lexem str -> str
+        Match.Tokens list -> String.join "" (List.map adapter list)
+        Match.InRule name value -> name ++ ":" ++ (adapter value) ++ ";"
+        Match.My my -> my
