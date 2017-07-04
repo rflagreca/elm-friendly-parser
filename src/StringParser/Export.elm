@@ -12,7 +12,7 @@ module StringParser.Export exposing
 import StringParser.Parser as StringParser exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)
-import Match exposing (..)
+import Match
 
 repoIssuesUrl : String
 repoIssuesUrl = "https://github.com/shamansir/elm-friendly-parser/issues"
@@ -22,6 +22,7 @@ returnType value =
     case value of
         StringParser.Chunk str -> "\"" ++ str ++ "\""
         StringParser.Chunks list -> "[ " ++ (String.join ", " list) ++ " ]"
+        StringParser.InRule name v -> name ++ ":" ++ (returnType v)
 
 -- sample : Parser.Sample -> String
 -- sample s =
@@ -72,11 +73,11 @@ failureReason failure =
 token : StringParser.Token -> String
 token aToken =
     case aToken of
-        NoLexem -> "Nothing"
-        Lexem str -> "\"" ++ str ++ "\""
-        Tokens tokens ->  "[ " ++ (String.join ", " (List.map token tokens)) ++ " ]"
-        InRule ruleName innerToken -> ruleName ++ ": " ++ (token innerToken)
-        My str -> returnType str
+        Match.NoLexem -> "Nothing"
+        Match.Lexem str -> "\"" ++ str ++ "\""
+        Match.Tokens tokens ->  "[ " ++ (String.join ", " (List.map token tokens)) ++ " ]"
+        Match.InRule ruleName innerToken -> ruleName ++ ": " ++ (token innerToken)
+        Match.My str -> returnType str
 
 {-| TODO -}
 parseResult : StringParser.ParseResult -> String

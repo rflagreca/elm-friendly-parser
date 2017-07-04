@@ -22,7 +22,7 @@ expectToMatchWith : String -> o -> Parser o -> (() -> Expect.Expectation)
 expectToMatchWith input value parser =
     parser |> expectToParseWith
         input
-        (Matched (Custom value))
+        (Matched (My value))
 
 expectToFailToParse : String -> Parser o -> (() -> Expect.Expectation)
 expectToFailToParse input parser =

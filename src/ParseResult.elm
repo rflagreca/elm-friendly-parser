@@ -8,7 +8,7 @@ module ParseResult exposing
     )
 
 import State exposing (Position)
-import Match exposing (Token)
+import Match exposing (Token, Adapter)
 
 type Expectation =
       ExpectedValue String -- FIXME: Rename: ExpectedLexem, MatchType?
@@ -36,8 +36,6 @@ type ParseResult o =
 type MyParseResult o =
       MatchedMy o
     | FailedMy (FailureReason o) Position
-
-type alias Adapter o = (Token o -> o)
 
 toMyResult : Adapter o -> ParseResult o -> MyParseResult o
 toMyResult adapter result =

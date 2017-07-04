@@ -83,28 +83,28 @@ init =
     |> Parser.withRules rules
     |> Parser.setStartRule "Expression"
 
-reduceAdditionAndSubtraction : ReturnType -> Float -> Float
+reduceAdditionAndSubtraction : Token ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =
     case triplet of
-        (Tokens (_::Lexem op::_::Number v::_) ) ->
+        (Tokens (_::(My (Operator op))::_::(My (Number v))::_) ) ->
             case op of
-                "+" -> sum + v
-                "-" -> sum - v
+                Add -> sum + v
+                Subtract -> sum - v
                 _ -> -1
         _ -> -1
 
-reduceMultiplicationAndDivision : ReturnType -> Float -> Float
+reduceMultiplicationAndDivision : Token ReturnType -> Float -> Float
 reduceMultiplicationAndDivision triplet sum =
     case triplet of
-        (Tokens (_::Lexem op::_::Number v::_) ) ->
+        (Tokens (_::(My (Operator op))::_::(My (Number v))::_) ) ->
             case op of
-                "*" -> sum * v
-                "/" -> sum / v
+                Multiply -> sum * v
+                Divide -> sum / v
                 _ -> -1
         _ -> -1
 
 {- The action of the "integer" rule. -}
-integerAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+integerAction : Token ReturnType -> State ReturnType -> ActionResult ReturnType
 integerAction source _ =
     case source of
         Tokens maybeDigits ->
@@ -114,7 +114,7 @@ integerAction source _ =
         _ -> Fail
 
 {- The action of the "Expression" rule. -}
-expressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+expressionAction : Token ReturnType -> State ReturnType -> ActionResult ReturnType
 expressionAction _ state =
     let
         maybeHead = (Dict.get "head" state.values)
@@ -124,13 +124,13 @@ expressionAction _ state =
         case ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
                 case ( head, tail ) of
-                    ( Number headNum, Tokens tailList ) ->
+                    ( My (Number headNum), Tokens tailList ) ->
                         Pass (Number (List.foldl reducer headNum tailList))
                     _ -> Fail
             _ -> Fail
 
 {- The action of the "Term" rule. -}
-termAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+termAction : Token ReturnType -> State ReturnType -> ActionResult ReturnType
 termAction _ state =
     let
         maybeHead = (Dict.get "head" state.values)
@@ -140,21 +140,21 @@ termAction _ state =
         case ( maybeHead, maybeTail ) of
             ( Just head, Just tail ) ->
                 case ( head, tail ) of
-                    ( Number headNum, Tokens tailList ) ->
+                    ( My (Number headNum), Tokens tailList ) ->
                         Pass (Number (List.foldl reducer headNum tailList))
                     _ -> Fail
             _ -> Fail
 
 {- The action used inside the "Factor" rule. -}
-extractExpressionAction : ReturnType -> State ReturnType -> ActionResult ReturnType
+extractExpressionAction : Token ReturnType -> State ReturnType -> ActionResult ReturnType
 extractExpressionAction _ state =
     case Dict.get "expr" state.values of
         Just val -> Pass val
         Nothing -> Fail
 
 {- Convert a list of potential digits to a float. -}
-digitsToFloat : List ReturnType -> Maybe Float
-digitsToFloat probablyDigits =
+digitsToFloat : List (Token ReturnType) -> Maybe Float
+digitsToFloat maybeDigits =
     let
         collapse =
             (\val prev ->
@@ -166,6 +166,6 @@ digitsToFloat probablyDigits =
                             _ -> Nothing
                     Nothing -> Nothing)
     in
-        case List.foldl collapse (Just "") probablyDigits of
+        case List.foldl collapse (Just "") maybeDigits of
             Just digitsString -> String.toFloat digitsString |> Result.toMaybe
             Nothing -> Nothing

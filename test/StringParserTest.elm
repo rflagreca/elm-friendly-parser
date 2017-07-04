@@ -569,7 +569,7 @@ expectToParseAsRule : String -> String -> String -> StringParser.Parser -> (() -
 expectToParseAsRule input output ruleName parser =
     parser |> expectToParseWith
         input
-        (Matched (InRule ruleName (Chunk output)))
+        (Matched (StringParser.InRule ruleName (Chunk output)))
 
 expectToParseNested : String -> List String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
