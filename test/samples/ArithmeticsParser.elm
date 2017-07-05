@@ -148,8 +148,11 @@ termAction _ state =
 {- The action used inside the "Factor" rule. -}
 extractExpressionAction : Token ReturnType -> State ReturnType -> ActionResult ReturnType
 extractExpressionAction _ state =
-    case Dict.get "expr" state.values of
-        Just val -> Pass val
+    case Debug.log "expr" (Dict.get "expr" state.values) of
+        Just val ->
+            case val of
+                (My (Number n)) -> Pass (Number n)
+                _ -> Fail
         Nothing -> Fail
 
 {- Convert a list of potential digits to a float. -}

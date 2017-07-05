@@ -1,6 +1,7 @@
 module ParserTest exposing (suite)
 
 import Test exposing (..)
+import Expect
 
 import Parser exposing (..)
 import Operator exposing (..)
@@ -46,13 +47,16 @@ testAdapters =
             ((Parser.start
                 (match "abc")
                 (\v -> case v of
-                    Adapter.AValue s -> (s ++ "d")
+                    Match.Lexem s -> (s ++ "d")
                     _ -> "failed"))
                 |> expectToParse
                     "abc"
                     "abcd")
         ]
 
-alwaysTestStringAdapter : Adapter.InputType String -> String
+alwaysTestStringAdapter : Match.Token String -> String
 alwaysTestStringAdapter val =
     "test"
+
+expectToParse : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
+expectToParse = expectToParseWith
