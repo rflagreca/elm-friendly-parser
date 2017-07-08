@@ -37,7 +37,11 @@ type alias Rules o = List (Rule o)
 
 type StepResult o = Matched (Token o) | Failed (FailureReason o)
 
-type alias Context o = ( Grammar o, State o )
+type alias Context o =
+    { grammar: Grammar o
+    , state: State o
+    , adapter: Maybe (Adapter o)
+    }
 
 type alias OperatorResult o = ( StepResult o, Context o )
 
@@ -161,7 +165,7 @@ execute op ctx =
 execNextChar : Context o -> OperatorResult o
 execNextChar ctx =
     let
-        ( _, state ) = ctx
+        { state } = ctx
     in
         if (state.position >= state.inputLength) then
             ctx |> failedBy ExpectedAnything GotEndOfInput
@@ -171,7 +175,7 @@ execNextChar ctx =
 execMatch : String -> Context o -> OperatorResult o
 execMatch expectation ctx =
     let
-        ( _, state ) = ctx
+        { state } = ctx
         inputLength = state.inputLength
         expectationLength = String.length expectation
     in
@@ -209,7 +213,7 @@ execSequence ops ctx =
                     ( _, Nothing, matches, lastCtx ) ->
                         lastCtx |> matched (Tokens matches)
                     ( _, Just reason, failures, lastCtx ) ->
-                        ctx |> loadPosition lastCtx |> failed reason
+                        ctx |> injectPosition lastCtx |> failed reason
 
 execChoice : List (Operator o) -> Context o -> OperatorResult o
 execChoice ops ctx =
@@ -277,38 +281,38 @@ execMaybe op ctx =
         result = execute op ctx
     in
         case result of
-            ( Matched s, newCtx ) -> matched s newCtx
+            ( Matched s, ctxAfterOp ) -> matched s ctxAfterOp
             ( Failed _, _ ) -> matched NoLexem ctx
 
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
     let
-        ( _, state ) = ctx
+        { state }  = ctx
         prevPos = state.position
         result = execute op ctx
     in
         case result of
-            ( Matched s, newCtx ) ->
+            ( Matched s, ctxAfterOp ) ->
                 let
-                    ( _, newState ) = newCtx
+                    stateAfterOp = ctxAfterOp.state
                 in
-                    newCtx |> matched (Lexem
-                        (newState.input |> String.slice prevPos newState.position))
+                    ctxAfterOp |> matched (Lexem
+                        (stateAfterOp.input |> String.slice prevPos stateAfterOp.position))
             failure -> failure
 
 execAnd : Operator o -> Context o -> OperatorResult o
 execAnd op ctx =
     let
-        ( result, newCtx ) = (execute op ctx)
+        ( result, ctxAfterOp ) = (execute op ctx)
     in
         case result of
             Matched v -> matched NoLexem ctx
-            failure -> ( failure, newCtx )
+            failure -> ( failure, ctxAfterOp )
 
 execNot : Operator o -> Context o -> OperatorResult o
 execNot op ctx =
     let
-        ( result, newCtx ) = (execute op ctx)
+        ( result, ctxAfterOp ) = (execute op ctx)
     in
         case result of
             Matched _ -> ctx |> failedCC ExpectedEndOfInput
@@ -317,14 +321,14 @@ execNot op ctx =
 execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
 execAction op userCode ctx =
     let
-        ( result, newCtx ) = (execute op ctx)
-        ( _, newState ) = newCtx
+        ( result, ctxAfterOp ) = (execute op ctx)
+        stateAfterOp = ctxAfterOp.state
          -- we forget all the data left inside the "closure" and take only the new position
-        resultingCtx = ctx |> loadPosition newCtx
+        resultingCtx = ctx |> injectPosition ctxAfterOp
     in
         case result of
             Matched v ->
-                case (userCode v newState) of
+                case (userCode v stateAfterOp) of
                     Pass userV -> resultingCtx |> matched (My userV)
                     PassThrough -> resultingCtx |> matched v
                     Fail -> resultingCtx |> failedCC ExpectedAnything
@@ -333,7 +337,7 @@ execAction op userCode ctx =
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
     let
-        ( _, state ) = ctx
+        { state } = ctx
         result = (userCode state)
     in
         case result of
@@ -343,7 +347,7 @@ execPre userCode ctx =
 execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
 execNegPre userCode ctx =
     let
-        ( _, state ) = ctx
+        { state } = ctx
         result = (userCode state)
     in
         case result of
@@ -353,17 +357,19 @@ execNegPre userCode ctx =
 execLabel : String -> Operator o -> Context o -> OperatorResult o
 execLabel name op ctx =
     let
-        ( result, newCtx ) = (execute op ctx)
+        ( result, ctxAfterOp ) = (execute op ctx)
         updatedCtx =
             case result of
                 Matched v ->
                     let
-                        ( grammar, newState ) = newCtx
-                        updatedState =
-                            { newState | values = newState.values |> Dict.insert name v }
+                        stateAfterOp = ctxAfterOp.state
+                        stateWithValue =
+                            { stateAfterOp
+                            | values = stateAfterOp.values |> Dict.insert name v
+                            }
                     in
-                        ( grammar, updatedState )
-                Failed _ -> newCtx
+                        { ctxAfterOp | state = stateWithValue }
+                Failed _ -> ctxAfterOp
     in
         ( result, updatedCtx )
 
@@ -374,7 +380,7 @@ execCall ruleName ctx =
 execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
 execCallAs ruleAlias realRuleName ctx =
     let
-        ( grammar, _ ) = ctx
+        { grammar } = ctx
     in
         case (getRule realRuleName grammar) of
             Just op -> (execute op ctx) |> addRuleToResult ruleAlias
@@ -388,7 +394,7 @@ execRegex : String -> Maybe String -> Context o -> OperatorResult o
 execRegex regex maybeDesc ctx =
     -- FIXME: cache all regular expressions with Regex.Regex instances
     let
-        ( _, state ) = ctx
+        { state } = ctx
         regexInstance = Regex.regex regex
         matches = Regex.find (Regex.AtMost 1) regexInstance
                     (String.slice state.position state.inputLength state.input)
@@ -461,16 +467,18 @@ notImplemented ctx =
 advanceBy : Int -> Context o -> Context o
 advanceBy count ctx =
     let
-        ( grammar, state ) = ctx
+        { state } = ctx
     in
-        ( grammar
-        , { state | position = state.position + count }
-        )
+        { ctx | state =
+            { state | position =
+                state.position + count
+            }
+        }
 
 getNextSubstring : Context o -> Int -> Int -> String
 getNextSubstring ctx shift count =
     let
-        ( _, state ) = ctx
+        { state } = ctx
     in
         String.slice (state.position + shift) (state.position + shift + count) state.input
 
@@ -495,7 +503,7 @@ addRuleToResult ruleName ( result, ctx ) =
 failByEndOfInput : Context o -> ( FailureReason o, Position )
 failByEndOfInput ctx =
     let
-        ( _, state ) = ctx
+        { state } = ctx
     in
         ( ByExpectation
             (ExpectedEndOfInput, (GotValue (getCurrentChar ctx)))
@@ -514,9 +522,13 @@ getRule : RuleName -> Grammar o -> Maybe (Operator o)
 getRule name grammar =
     Dict.get name grammar
 
-loadPosition : Context o -> Context o -> Context o
-loadPosition ( _, loadFrom ) ( grammar, addTo ) =
-    ( grammar, { addTo | position = loadFrom.position } )
+injectPosition : Context o -> Context o -> Context o
+injectPosition from to =
+    let
+        { position } = from.state
+        injectIntoState = to.state
+    in
+        { to | state = { injectIntoState | position = position } }
 
 -- TODO: type Step o v f = TryNext ( Operator o, v ) | Success v | Success | Failure f
 --       chain should return Success or Failure then
