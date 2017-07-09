@@ -33,17 +33,19 @@ import ParseResult exposing
     , Expectation(..)
     , Sample(..)
     )
-import Match exposing (Token)
+import Match exposing (Adapter, Token)
 
 type alias Parser o =
     { grammar: Grammar o
     , startRule: String
+    , adapter: Maybe (Adapter o)
     }
 
 init : Parser o
 init =
     { grammar = noRules
     , startRule = "start"
+    , adapter = Nothing
     }
 
 -- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
@@ -53,14 +55,18 @@ parse : String -> Parser o -> ParseResult o
 parse input parser =
     let
         state = (State.init input)
-        context = (parser.grammar, state)
+        context =
+            { adapter = parser.adapter
+            , grammar = parser.grammar
+            , state = state
+            }
     in
         case getStartRule parser of
             Just startOperator ->
                 -- TODO: extractParseResult (execCall parser.startRule context)
                 let
                     ( opResult, lastCtx ) = (execute startOperator context)
-                    ( _, lastState ) = lastCtx
+                    lastState = lastCtx.state
                 in
                     case toResult opResult of
                         Ok success ->
