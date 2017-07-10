@@ -43,7 +43,7 @@ type alias Context o =
     , adapter: Maybe (Adapter o)
     }
 
-type alias OperatorResult o = ( StepResult o, Context o )
+type alias OperatorResult o = ( StepResult o, State o )
 
 type Operator o =
       NextChar -- 1. `ch`
@@ -168,9 +168,9 @@ execNextChar ctx =
         { state } = ctx
     in
         if (state.position >= state.inputLength) then
-            ctx |> failedBy ExpectedAnything GotEndOfInput
+            state |> failedBy ExpectedAnything GotEndOfInput
         else
-            ctx |> advanceBy 1 |> matched (Lexem (getNextChar ctx))
+            state |> advanceBy 1 |> matched (Lexem (getNextChar state))
 
 execMatch : String -> Context o -> OperatorResult o
 execMatch expectation ctx =
@@ -180,13 +180,13 @@ execMatch expectation ctx =
         expectationLength = String.length expectation
     in
         if (state.position + expectationLength) > inputLength then
-            ctx |> failedBy (ExpectedValue expectation) GotEndOfInput
+            state |> failedBy (ExpectedValue expectation) GotEndOfInput
         else
             if (String.startsWith expectation
                 (state.input |> String.dropLeft state.position)) then
-                ctx |> advanceBy expectationLength |> matched (Lexem expectation)
+                state |> advanceBy expectationLength |> matched (Lexem expectation)
             else
-                ctx |> failedCC (ExpectedValue expectation)
+                state |> failedCC (ExpectedValue expectation)
 
 execSequence : List (Operator o) -> Context o -> OperatorResult o
 execSequence ops ctx =
@@ -242,7 +242,7 @@ execChoice ops ctx =
                     ( _, Just ( success, lastCtx ), _ ) -> lastCtx |> matched success
                         -- ctx |> loadPosition lastCtx |> matchedWith success
                     ( _, Nothing, failures ) ->
-                        ctx |> failedNestedCC (keepOnlyFailures failures)
+                        ctx.state |> failedNestedCC (keepOnlyFailures failures)
 
 execSome : Operator o -> Context o -> OperatorResult o
 execSome op ctx =
@@ -263,8 +263,8 @@ execSome op ctx =
     in
         case applied of
             ( allMatches, Just lastCtx, Nothing ) -> lastCtx |> matched (Tokens allMatches)
-            ( _, _, Just failure ) -> ctx |> failed failure
-            _ -> ctx |> failedBy ExpectedAnything GotEndOfInput
+            ( _, _, Just failure ) -> ctx.state |> failed failure
+            _ -> ctx.state |> failedBy ExpectedAnything GotEndOfInput
 
 execAny : Operator o -> Context o -> OperatorResult o
 execAny op ctx =
@@ -273,7 +273,7 @@ execAny op ctx =
     in
         case someResult of
             ( Matched _, _ ) -> someResult
-            ( Failed _, _ ) -> ctx |> matched (Tokens [])
+            ( Failed _, _ ) -> ctx.state |> matched (Tokens [])
 
 execMaybe : Operator o -> Context o -> OperatorResult o
 execMaybe op ctx =
@@ -281,8 +281,8 @@ execMaybe op ctx =
         result = execute op ctx
     in
         case result of
-            ( Matched s, ctxAfterOp ) -> matched s ctxAfterOp
-            ( Failed _, _ ) -> matched NoLexem ctx
+            ( Matched s, stateAfterOp ) -> stateAfterOp |> matched s
+            ( Failed _, _ ) -> ctx.state |> matched NoLexem
 
 execTextOf : Operator o -> Context o -> OperatorResult o
 execTextOf op ctx =
@@ -292,22 +292,19 @@ execTextOf op ctx =
         result = execute op ctx
     in
         case result of
-            ( Matched s, ctxAfterOp ) ->
-                let
-                    stateAfterOp = ctxAfterOp.state
-                in
-                    ctxAfterOp |> matched (Lexem
+            ( Matched s, stateAfterOp ) ->
+                stateAfterOp |> matched (Lexem
                         (stateAfterOp.input |> String.slice prevPos stateAfterOp.position))
             failure -> failure
 
 execAnd : Operator o -> Context o -> OperatorResult o
 execAnd op ctx =
     let
-        ( result, ctxAfterOp ) = (execute op ctx)
+        ( result, stateAfterOp ) = (execute op ctx)
     in
         case result of
-            Matched v -> matched NoLexem ctx
-            failure -> ( failure, ctxAfterOp )
+            Matched v -> stateAfterOp |> matched NoLexem
+            failure -> ( failure, stateAfterOp )
 
 execNot : Operator o -> Context o -> OperatorResult o
 execNot op ctx =
@@ -380,11 +377,11 @@ execCall ruleName ctx =
 execCallAs : RuleName -> RuleName -> Context o -> OperatorResult o
 execCallAs ruleAlias realRuleName ctx =
     let
-        { grammar } = ctx
+        { grammar, state } = ctx
     in
         case (getRule realRuleName grammar) of
             Just op -> (execute op ctx) |> addRuleToResult ruleAlias
-            Nothing -> ctx |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar ctx)
+            Nothing -> state |> failedBy (ExpectedRuleDefinition realRuleName) (gotChar state)
 
 -- execDefineRule : RuleName -> Operator o -> Context o -> OperatorResult o
 -- execDefineRule ruleName op ctx =
@@ -408,12 +405,12 @@ execRegex regex maybeDesc ctx =
         case firstMatch of
             Just match ->
                 if match.index == 0 then
-                    ctx
+                    state
                         |> advanceBy (String.length match.match)
                         |> matched (Lexem match.match)
                 else
-                    ctx |> failedRE description
-            Nothing -> ctx |> failedRE description
+                    state |> failedRE description
+            Nothing -> state |> failedRE description
 
 -- UTILS
 
@@ -423,92 +420,79 @@ execRegex regex maybeDesc ctx =
 noRules : Grammar o
 noRules = Dict.empty
 
-matched : Token o -> Context o -> OperatorResult o
-matched token ctx =
-    ( Matched token, ctx )
+matched : Token o -> State o -> OperatorResult o
+matched token state =
+    ( Matched token, state )
 
 -- matchedFlatList : List o -> Context o -> OperatorResult o
 -- matchedFlatList val ctx =
 --     matchedWith (ctx.flatten (AList val)) ctx
 
-failed : FailureReason o -> Context o -> OperatorResult o
-failed reason ctx =
-    ( Failed reason, ctx )
+failed : FailureReason o -> State o -> OperatorResult o
+failed reason state =
+    ( Failed reason, state )
 
-failedBy : Expectation -> Sample -> Context o -> OperatorResult o
-failedBy expectation sample ctx =
-    ctx |> failed (ByExpectation ( expectation, sample ))
+failedBy : Expectation -> Sample -> State o -> OperatorResult o
+failedBy expectation sample state =
+    state |> failed (ByExpectation ( expectation, sample ))
 
 -- fail with current character
-failedCC : Expectation -> Context o -> OperatorResult o
-failedCC expectation ctx =
-    ctx |> failedBy expectation (gotChar ctx)
+failedCC : Expectation -> State o -> OperatorResult o
+failedCC expectation state =
+    state |> failedBy expectation (gotChar state)
 
-failedNested : List (FailureReason o) -> Sample -> Context o -> OperatorResult o
-failedNested failures sample ctx =
-    ctx |> failed (FollowingNestedOperator ( failures, sample ))
+failedNested : List (FailureReason o) -> Sample -> State o -> OperatorResult o
+failedNested failures sample state =
+    state |> failed (FollowingNestedOperator ( failures, sample ))
 
-failedNestedCC : List (FailureReason o) -> Context o -> OperatorResult o
-failedNestedCC failures ctx =
-    ctx |> failedNested failures (gotChar ctx)
+failedNestedCC : List (FailureReason o) -> State o -> OperatorResult o
+failedNestedCC failures state =
+    state |> failedNested failures (gotChar state)
 
-failedRE : String -> Context o -> OperatorResult o
-failedRE desc ctx =
-    ctx |> failedCC (ExpectedRegexMatch desc)
+failedRE : String -> State o -> OperatorResult o
+failedRE desc state =
+    state |> failedCC (ExpectedRegexMatch desc)
 
-notImplemented : Context o -> OperatorResult o
-notImplemented ctx =
-    ctx |> failed SomethingWasNotImplemented
+notImplemented : State o -> OperatorResult o
+notImplemented state =
+    state |> failed SomethingWasNotImplemented
 
 -- failWith : Expectation -> Sample -> ParseResult
 -- failWith expectation sample =
 --     ExpectationFailure ( expectation, sample )
 
-advanceBy : Int -> Context o -> Context o
-advanceBy count ctx =
-    let
-        { state } = ctx
-    in
-        { ctx | state =
-            { state | position =
-                state.position + count
-            }
-        }
+advanceBy : Int -> State o -> State o
+advanceBy count state =
+    { state | position = state.position + count }
 
-getNextSubstring : Context o -> Int -> Int -> String
-getNextSubstring ctx shift count =
-    let
-        { state } = ctx
-    in
-        String.slice (state.position + shift) (state.position + shift + count) state.input
+getNextSubstring : State o -> Int -> Int -> String
+getNextSubstring state shift count =
+    String.slice (state.position + shift) (state.position + shift + count) state.input
 
-getNextChar : Context o -> String
+getNextChar : State o -> String
 getNextChar ctx =
     getNextSubstring ctx 1 1
 
-getCurrentChar : Context o -> String
+getCurrentChar : State o -> String
 getCurrentChar ctx =
     getNextSubstring ctx 0 1
 
-gotChar : Context o -> Sample
-gotChar ctx =
-    GotValue (getCurrentChar ctx)
+gotChar : State o -> Sample
+gotChar state =
+    GotValue (getCurrentChar state)
 
 addRuleToResult : RuleName -> OperatorResult o -> OperatorResult o
-addRuleToResult ruleName ( result, ctx ) =
+addRuleToResult ruleName ( result, state ) =
     case result of
-        Matched v -> ctx |> matched (InRule ruleName v)
-        Failed failure -> ( Failed (FollowingRule ruleName failure), ctx )
+        Matched v -> state |> matched (InRule ruleName v)
+        Failed failure -> ( Failed (FollowingRule ruleName failure), state )
 
-failByEndOfInput : Context o -> ( FailureReason o, Position )
-failByEndOfInput ctx =
-    let
-        { state } = ctx
-    in
-        ( ByExpectation
-            (ExpectedEndOfInput, (GotValue (getCurrentChar ctx)))
-        , findPosition state
-        )
+failByEndOfInput : State o -> ( FailureReason o, Position )
+failByEndOfInput state =
+    ( ByExpectation
+        (ExpectedEndOfInput, (GotValue (getCurrentChar state)))
+    , findPosition state
+    )
 
 -- HELPERS
 
@@ -545,7 +529,8 @@ chain stepFn initialOp initialVal initialCtx =
     let
         unfold = (\op ctx val ->
                     let
-                        ( mayBeMatched, nextCtx ) = ( execute op ctx )
+                        ( mayBeMatched, nextState ) = ( execute op ctx )
+                        nextCtx = { ctx | state = nextState }
                     in
                         case (stepFn mayBeMatched nextCtx val) of
                             Next (nextOp, nextVal) ->
