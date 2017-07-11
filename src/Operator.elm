@@ -1,5 +1,6 @@
 module Operator exposing
     ( Operator(..)
+    , Context
     , RuleName, Rule, Grammar, Rules, noRules
     , ch, match, choice, seqnc, maybe, text, any, some, and, not
     , action, pre, xpre, label, call, re, redesc

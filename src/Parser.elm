@@ -12,6 +12,7 @@ import Dict exposing (..)
 
 import Operator exposing
     ( Operator
+    , Context
     , execute
     , Rules
     , RuleName
@@ -36,39 +37,32 @@ import ParseResult exposing
 import Match exposing (Adapter, Token)
 
 type alias Parser o =
-    { grammar: Grammar o
-    , startRule: String
-    , adapter: Maybe (Adapter o)
-    }
+    String -> ParseResult o
+    -- { grammar: Grammar o
+    -- , startRule: String
+    -- , adapter: Maybe (Adapter o)
+    -- }
 
-init : Parser o
-init =
-    { grammar = noRules
-    , startRule = "start"
-    , adapter = Nothing
-    }
+default : Parser o
+default =
+    (\input ->
+        parseWith input noRules "start" Nothing)
 
--- FIXME: change Parser to be just a function: (String -> ParseResult o), then Context is optional
---        and there's no need to repeat things
--- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
---        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
---        Fix the docs in the intro then.
-parse : String -> Parser o -> ParseResult o
-parse input parser =
+parseWith : String -> Grammar o -> String -> Maybe (Adapter o) -> ParseResult o
+parseWith input grammar startRule maybeAdapter =
     let
         state = (State.init input)
         context =
-            { adapter = parser.adapter
-            , grammar = parser.grammar
+            { adapter = maybeAdapter
+            , grammar = grammar
             , state = state
             }
     in
-        case getStartRule parser of
+        case getStartRule context of
             Just startOperator ->
                 -- TODO: extractParseResult (execCall parser.startRule context)
                 let
-                    ( opResult, lastCtx ) = (execute startOperator context)
-                    lastState = lastCtx.state
+                    ( opResult, lastState ) = (execute startOperator context)
                 in
                     case toResult opResult of
                         Ok success ->
@@ -76,11 +70,18 @@ parse input parser =
                                 Matched success
                             else
                                 let
-                                    ( reason, position ) = failByEndOfInput lastCtx
+                                    ( reason, position ) = lastState |> failByEndOfInput
                                 in
                                     Failed reason position
                         Err reason -> Failed reason (findPosition lastState)
             Nothing -> Failed NoStartRule (0, 0)
+
+-- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
+--        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
+--        Fix the docs in the intro then.
+parse : String -> Parser o -> ParseResult o
+parse input parser =
+    parser input
 
 withRules : Rules o -> Parser o -> Parser o
 withRules rules parser =
@@ -100,9 +101,9 @@ startWith op parser =
 addStartRule : Operator o -> Parser o -> Parser o
 addStartRule = startWith
 
-getStartRule : Parser o -> Maybe (Operator o)
-getStartRule parser =
-    Dict.get parser.startRule parser.grammar
+getStartRule : Context o -> Maybe (Operator o)
+getStartRule context =
+    Dict.get context.startRule context.grammar
 
 setStartRule : RuleName -> Parser o -> Parser o
 setStartRule name parser =
