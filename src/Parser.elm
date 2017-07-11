@@ -1,7 +1,7 @@
 module Parser exposing
     ( Parser, init, start, startWith, parse
     -- , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
-    , withRules, setStartRule, getStartRule, getRule --, noRules, RuleName, Rules, RulesList
+    , withRules, setStartRule, getRule --, noRules, RuleName, Rules, RulesList
     -- , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
     -- , InputType(..)
     -- , Adapter
@@ -38,18 +38,19 @@ import Match exposing (Adapter, Token)
 
 type alias Parser o =
     String -> ParseResult o
-    -- { grammar: Grammar o
-    -- , startRule: String
-    -- , adapter: Maybe (Adapter o)
-    -- }
 
-default : Parser o
-default =
-    (\input ->
-        parseWith input noRules "start" Nothing)
+type alias ParserDef o = ( Grammar o, String, Maybe (Adapter o) )
 
-parseWith : String -> Grammar o -> String -> Maybe (Adapter o) -> ParseResult o
-parseWith input grammar startRule maybeAdapter =
+init : ParserDef o
+init =
+    (noRules, "start", Nothing)
+
+fromDefinition : ParserDef o -> Parser o
+fromDefinition =
+    parseWith
+
+parseWith : ParserDef o -> String -> ParseResult o
+parseWith ( grammar, startRule, maybeAdapter ) input =
     let
         state = (State.init input)
         context =
@@ -58,7 +59,7 @@ parseWith input grammar startRule maybeAdapter =
             , state = state
             }
     in
-        case getStartRule context of
+        case Dict.get startRule grammar of
             Just startOperator ->
                 -- TODO: extractParseResult (execCall parser.startRule context)
                 let
@@ -79,43 +80,41 @@ parseWith input grammar startRule maybeAdapter =
 -- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
 --        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
 --        Fix the docs in the intro then.
-parse : String -> Parser o -> ParseResult o
-parse input parser =
-    parser input
+parse : String -> ParserDef o -> ParseResult o
+parse input def =
+    input |> fromDefinition def
 
-withRules : Rules o -> Parser o -> Parser o
-withRules rules parser =
-    { parser | grammar = Dict.fromList rules }
+withRules : Rules o -> ParserDef o -> ParserDef o
+withRules rules ( _, startRule, maybeAdapter ) =
+    ( Dict.fromList rules, startRule, maybeAdapter )
+    -- { parser | grammar = Dict.fromList rules }
+
     -- , startRule = case List.head rules of
     --     Just ( name, _ ) -> name
     --     Nothing -> "start"
 
-start : Operator o -> Parser o
+start : Operator o -> ParserDef o
 start op =
     init |> startWith op
 
-startWith : Operator o -> Parser o -> Parser o
-startWith op parser =
-    parser |> addRule "start" op
+startWith : Operator o -> ParserDef o -> ParserDef o
+startWith op def =
+    def |> addRule "start" op
 
-addStartRule : Operator o -> Parser o -> Parser o
+addStartRule : Operator o -> ParserDef o -> ParserDef o
 addStartRule = startWith
 
-getStartRule : Context o -> Maybe (Operator o)
-getStartRule context =
-    Dict.get context.startRule context.grammar
+setStartRule : RuleName -> ParserDef o -> ParserDef o
+setStartRule name ( grammar, _, maybeAdapter ) =
+    ( grammar, name, maybeAdapter )
 
-setStartRule : RuleName -> Parser o -> Parser o
-setStartRule name parser =
-    { parser | startRule = name }
+addRule : RuleName -> Operator o -> ParserDef o -> ParserDef o
+addRule name op ( grammar, startRule, maybeAdapter ) =
+    ( grammar |> Dict.insert name op, startRule, maybeAdapter )
 
-addRule : RuleName -> Operator o -> Parser o -> Parser o
-addRule name op parser =
-    { parser | grammar = parser.grammar |> Dict.insert name op }
-
-getRule : RuleName -> Parser o -> Maybe (Operator o)
-getRule name parser =
-    Dict.get name parser.grammar
+getRule : RuleName -> ParserDef o -> Maybe (Operator o)
+getRule name ( grammar, _, _ ) =
+    Dict.get name grammar
 
 -- UTILS
 
