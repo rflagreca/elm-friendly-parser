@@ -48,6 +48,8 @@ init =
     , adapter = Nothing
     }
 
+-- FIXME: change Parser to be just a function: (String -> ParseResult o), then Context is optional
+--        and there's no need to repeat things
 -- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
 --        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
 --        Fix the docs in the intro then.

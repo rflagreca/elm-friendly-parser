@@ -125,7 +125,6 @@ pre : UserPrefixCode o -> Operator o
 pre userCode =
     PreExec userCode
 
-
 xpre : UserPrefixCode o -> Operator o
 xpre userCode =
     NegPreExec userCode
@@ -190,35 +189,38 @@ execMatch expectation ctx =
 
 execSequence : List (Operator o) -> Context o -> OperatorResult o
 execSequence ops ctx =
-    case ops of
-        [] -> ctx |> failedBy ExpectedAnything GotEndOfInput
-        (firstOp::restOps) ->
-            let
-                applied = chain
-                    (\prevResult lastCtx reducedVal ->
-                        let
-                            ( opsLeft, maybeFailed, matches, _ ) = reducedVal
-                        in
-                            case ( prevResult, opsLeft ) of
-                                ( Matched v, [] ) ->
-                                    StopWith ( [], Nothing, matches ++ [ v ], lastCtx )
-                                ( Matched v, nextOp::restOps ) ->
-                                    Next ( nextOp, ( restOps, Nothing, matches ++ [ v ], lastCtx ) )
-                                ( Failed failure, _ ) ->
-                                    StopWith ( [], Just failure, matches, lastCtx )
-                    )
-                    firstOp ( restOps, Nothing, [], ctx ) ctx
-            in
-                case applied of
-                    ( _, Nothing, matches, lastCtx ) ->
-                        lastCtx |> matched (Tokens matches)
-                    ( _, Just reason, failures, lastCtx ) ->
-                        ctx |> injectPosition lastCtx |> failed reason
+    let
+        { state } = ctx
+    in
+        case ops of
+            [] -> state |> failedBy ExpectedAnything GotEndOfInput
+            (firstOp::restOps) ->
+                let
+                    applied = chain
+                        (\prevResult lastState reducedVal ->
+                            let
+                                ( opsLeft, maybeFailed, matches, _ ) = reducedVal
+                            in
+                                case ( prevResult, opsLeft ) of
+                                    ( Matched v, [] ) ->
+                                        StopWith ( [], Nothing, matches ++ [ v ], lastState )
+                                    ( Matched v, nextOp::restOps ) ->
+                                        Next ( nextOp, ( restOps, Nothing, matches ++ [ v ], lastState ) )
+                                    ( Failed failure, _ ) ->
+                                        StopWith ( [], Just failure, matches, lastState )
+                        )
+                        firstOp ( restOps, Nothing, [], state ) ctx
+                in
+                    case applied of
+                        ( _, Nothing, matches, lastState ) ->
+                            lastState |> matched (Tokens matches)
+                        ( _, Just reason, failures, lastState ) ->
+                            state |> movePosition lastState |> failed reason
 
 execChoice : List (Operator o) -> Context o -> OperatorResult o
 execChoice ops ctx =
     case ops of
-        [] -> ctx |> failedBy ExpectedAnything GotEndOfInput
+        [] -> ctx.state |> failedBy ExpectedAnything GotEndOfInput
         (firstOp::restOps) ->
             let
                 applied = chain
@@ -309,27 +311,26 @@ execAnd op ctx =
 execNot : Operator o -> Context o -> OperatorResult o
 execNot op ctx =
     let
-        ( result, ctxAfterOp ) = (execute op ctx)
+        ( result, _ ) = (execute op ctx)
     in
         case result of
-            Matched _ -> ctx |> failedCC ExpectedEndOfInput
-            failure -> matched NoLexem ctx
+            Matched _ -> ctx.state |> failedCC ExpectedEndOfInput
+            failure -> ctx.state |> matched NoLexem
 
 execAction : Operator o -> UserCode o -> Context o -> OperatorResult o
 execAction op userCode ctx =
     let
-        ( result, ctxAfterOp ) = (execute op ctx)
-        stateAfterOp = ctxAfterOp.state
+        ( result, stateAfterOp ) = (execute op ctx)
          -- we forget all the data left inside the "closure" and take only the new position
-        resultingCtx = ctx |> injectPosition ctxAfterOp
+        resultingState = ctx.state |> movePosition stateAfterOp
     in
         case result of
             Matched v ->
                 case (userCode v stateAfterOp) of
-                    Pass userV -> resultingCtx |> matched (My userV)
-                    PassThrough -> resultingCtx |> matched v
-                    Fail -> resultingCtx |> failedCC ExpectedAnything
-            Failed _ -> ( result, resultingCtx )
+                    Pass userV -> resultingState |> matched (My userV)
+                    PassThrough -> resultingState |> matched v
+                    Fail -> resultingState |> failedCC ExpectedAnything
+            Failed _ -> ( result, resultingState )
 
 execPre : UserPrefixCode o -> Context o -> OperatorResult o
 execPre userCode ctx =
@@ -338,8 +339,8 @@ execPre userCode ctx =
         result = (userCode state)
     in
         case result of
-            Continue -> ctx |> matched NoLexem
-            Halt -> ctx |> failedCC ExpectedEndOfInput
+            Continue -> state |> matched NoLexem
+            Halt -> state |> failedCC ExpectedEndOfInput
 
 execNegPre : UserPrefixCode o -> Context o -> OperatorResult o
 execNegPre userCode ctx =
@@ -348,27 +349,22 @@ execNegPre userCode ctx =
         result = (userCode state)
     in
         case result of
-            Continue -> ctx |> failedCC ExpectedEndOfInput
-            Halt -> ctx |> matched NoLexem
+            Continue -> state |> failedCC ExpectedEndOfInput
+            Halt -> state |> matched NoLexem
 
 execLabel : String -> Operator o -> Context o -> OperatorResult o
 execLabel name op ctx =
     let
-        ( result, ctxAfterOp ) = (execute op ctx)
-        updatedCtx =
+        ( result, stateAfterOp ) = (execute op ctx)
+        stateMaybeWithValue =
             case result of
                 Matched v ->
-                    let
-                        stateAfterOp = ctxAfterOp.state
-                        stateWithValue =
-                            { stateAfterOp
-                            | values = stateAfterOp.values |> Dict.insert name v
-                            }
-                    in
-                        { ctxAfterOp | state = stateWithValue }
-                Failed _ -> ctxAfterOp
+                    { stateAfterOp
+                    | values = stateAfterOp.values |> Dict.insert name v
+                    }
+                Failed _ -> stateAfterOp
     in
-        ( result, updatedCtx )
+        ( result, stateMaybeWithValue )
 
 execCall : RuleName -> Context o -> OperatorResult o
 execCall ruleName ctx =
@@ -506,13 +502,9 @@ getRule : RuleName -> Grammar o -> Maybe (Operator o)
 getRule name grammar =
     Dict.get name grammar
 
-injectPosition : Context o -> Context o -> Context o
-injectPosition from to =
-    let
-        { position } = from.state
-        injectIntoState = to.state
-    in
-        { to | state = { injectIntoState | position = position } }
+movePosition : State o -> State o -> State o
+movePosition { position } state =
+    { state | position = position }
 
 -- TODO: type Step o v f = TryNext ( Operator o, v ) | Success v | Success | Failure f
 --       chain should return Success or Failure then
@@ -520,27 +512,27 @@ type Step o v = Next ( Operator o, v ) | StopWith v | Stop
 
 chain :
     -- (StepResult o -> Context o -> v -> ChainStep (Operator o, v))
-       (StepResult o -> Context o -> v -> Step o v)
+       (StepResult o -> State o -> v -> Step o v)
     -> Operator o
     -> v
     -> Context o
     -> v
-chain stepFn initialOp initialVal initialCtx =
+chain stepFn initialOp initialVal ctx =
     let
-        unfold = (\op ctx val ->
+        initialState = ctx.state
+        unfold = (\op state val ->
                     let
                         ( mayBeMatched, nextState ) = ( execute op ctx )
-                        nextCtx = { ctx | state = nextState }
                     in
-                        case (stepFn mayBeMatched nextCtx val) of
+                        case (stepFn mayBeMatched nextState val) of
                             Next (nextOp, nextVal) ->
-                                (unfold nextOp nextCtx nextVal)
+                                (unfold nextOp nextState nextVal)
                             StopWith lastVal -> lastVal
                             Stop -> val
 
                     )
     in
-        unfold initialOp initialCtx initialVal
+        unfold initialOp initialState initialVal
 
 -- concat : StepResult o -> StepResult o -> Context o -> OperatorResult o
 -- concat resultOne resultTwo inContext =
