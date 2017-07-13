@@ -39,19 +39,69 @@ import Match exposing (Adapter, Token)
 type alias Parser o =
     String -> ParseResult o
 
-type alias ParserDef o = ( Grammar o, String, Maybe (Adapter o) )
+-- type alias ConfiguredParser o =
+--     ParserDef o -> Parser o
 
-init : ParserDef o
-init =
-    (noRules, "start", Nothing)
+-- type alias ParserDef o = ( Grammar o, String, Maybe (Adapter o) )
 
-fromDefinition : ParserDef o -> Parser o
+init : Rules o -> Parser o
+init rules =
+    fromFriendlyDefinition (rules, Nothing, Nothing)
+
+init2 : Rules o -> String -> Parser o
+init2 rules startRule =
+   fromFriendlyDefinition (rules, Just startRule, Nothing)
+
+init3 : Rules o -> Adapter o -> Parser o
+init3 rules adapter =
+   fromFriendlyDefinition (rules, Nothing, Just adapter)
+
+init4 : Rules o -> String -> Adapter o -> Parser o
+init4 rules startRule adapter =
+   fromFriendlyDefinition (rules, Just startRule, Just adapter)
+
+init5 : Operator o -> Parser o
+init5 startOp =
+    fromFriendlyDefinition
+        ( noRules |> addRule "start" startOp
+        , Just "start"
+        , Nothing
+        )
+
+init6 : Operator o -> Adapter o -> Parser o
+init6 startOp adapter =
+    fromFriendlyDefinition
+        ( noRules |> addRule "start" startOp
+        , Just "start"
+        , Just adapter
+        )
+
+suggestStartRule : Grammar o -> Maybe String -> String
+suggestStartRule grammar maybeName =
+    case maybeName of
+        Just name -> name
+        Nothing ->
+            case grammar |> getRule "start" of
+                Just _ -> "start"
+                Nothing -> List.head Dict.keys |> Maybe.withDefault "<UNKNOWN>"
+
+
+fromFriendlyDefinition : ( Rules o, Maybe String, Maybe (Adapter o) ) -> Parser o
+fromFriendlyDefinition ( rules, maybeStartRule, maybeAdapter ) =
+    let
+        grammar = Dict.fromList rules
+        startRule = maybeStartRule |> suggestStartRule grammar
+    in
+        fromDefinition ( grammar, startRule, maybeAdapter )
+
+fromDefinition : ( Grammar o, String, Maybe (Adapter o) ) -> Parser o
 fromDefinition =
     parseWith
 
-parseWith : ParserDef o -> String -> ParseResult o
+parseWith : ( Grammar o, String, Maybe (Adapter o) ) -> String -> ParseResult o
 parseWith ( grammar, startRule, maybeAdapter ) input =
     let
+
         state = (State.init input)
         context =
             { adapter = maybeAdapter
@@ -80,40 +130,24 @@ parseWith ( grammar, startRule, maybeAdapter ) input =
 -- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
 --        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
 --        Fix the docs in the intro then.
-parse : String -> ParserDef o -> ParseResult o
-parse input def =
-    input |> fromDefinition def
+parse : String -> Parser o -> ParseResult o
+parse input parser =
+    parser input
 
-withRules : Rules o -> ParserDef o -> ParserDef o
-withRules rules ( _, startRule, maybeAdapter ) =
-    ( Dict.fromList rules, startRule, maybeAdapter )
-    -- { parser | grammar = Dict.fromList rules }
-
-    -- , startRule = case List.head rules of
-    --     Just ( name, _ ) -> name
-    --     Nothing -> "start"
-
-start : Operator o -> ParserDef o
+start : Operator o -> Parser o
 start op =
     init |> startWith op
 
-startWith : Operator o -> ParserDef o -> ParserDef o
-startWith op def =
-    def |> addRule "start" op
+startWith : Operator o -> Parser o
+startWith op =
+    addRule "start" op
 
-addStartRule : Operator o -> ParserDef o -> ParserDef o
-addStartRule = startWith
+addRule : RuleName -> Operator o -> Grammar o -> Grammar o
+addRule name op grammar =
+    ( grammar |> Dict.insert name op )
 
-setStartRule : RuleName -> ParserDef o -> ParserDef o
-setStartRule name ( grammar, _, maybeAdapter ) =
-    ( grammar, name, maybeAdapter )
-
-addRule : RuleName -> Operator o -> ParserDef o -> ParserDef o
-addRule name op ( grammar, startRule, maybeAdapter ) =
-    ( grammar |> Dict.insert name op, startRule, maybeAdapter )
-
-getRule : RuleName -> ParserDef o -> Maybe (Operator o)
-getRule name ( grammar, _, _ ) =
+getRule : RuleName -> Grammar o -> Maybe (Operator o)
+getRule name grammar =
     Dict.get name grammar
 
 -- UTILS
