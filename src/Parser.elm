@@ -44,32 +44,32 @@ type alias Parser o =
 
 -- type alias ParserDef o = ( Grammar o, String, Maybe (Adapter o) )
 
-init : Rules o -> Parser o
-init rules =
+withRules : Rules o -> Parser o
+withRules rules =
     fromFriendlyDefinition (rules, Nothing, Nothing)
 
-init2 : Rules o -> String -> Parser o
-init2 rules startRule =
+withRulesAt : Rules o -> String -> Parser o
+withRulesAt rules startRule =
    fromFriendlyDefinition (rules, Just startRule, Nothing)
 
-init3 : Rules o -> Adapter o -> Parser o
-init3 rules adapter =
+withAdapter : Rules o -> Adapter o -> Parser o
+withAdapter rules adapter =
    fromFriendlyDefinition (rules, Nothing, Just adapter)
 
-init4 : Rules o -> String -> Adapter o -> Parser o
-init4 rules startRule adapter =
+withAdapterAt : Rules o -> String -> Adapter o -> Parser o
+withAdapterAt rules startRule adapter =
    fromFriendlyDefinition (rules, Just startRule, Just adapter)
 
-init5 : Operator o -> Parser o
-init5 startOp =
+startFrom : Operator o -> Parser o
+startFrom startOp =
     fromFriendlyDefinition
         ( noRules |> addRule "start" startOp
         , Just "start"
         , Nothing
         )
 
-init6 : Operator o -> Adapter o -> Parser o
-init6 startOp adapter =
+startWithAdapter : Operator o -> Adapter o -> Parser o
+startWithAdapter startOp adapter =
     fromFriendlyDefinition
         ( noRules |> addRule "start" startOp
         , Just "start"
