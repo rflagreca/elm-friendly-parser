@@ -1,7 +1,9 @@
 module Parser exposing
-    ( Parser, init, start, startWith, parse
+    ( Parser, parse
+    , withRules, withRulesAt, withAdapter
+    , startFrom, startWithAdapter
     -- , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
-    , withRules, setStartRule, getRule --, noRules, RuleName, Rules, RulesList
+    , getRule --, noRules, RuleName, Rules, RulesList
     -- , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
     -- , InputType(..)
     -- , Adapter
@@ -62,17 +64,17 @@ withAdapterAt rules startRule adapter =
 
 startFrom : Operator o -> Parser o
 startFrom startOp =
-    fromFriendlyDefinition
+    fromDefinition
         ( noRules |> addRule "start" startOp
-        , Just "start"
+        , "start"
         , Nothing
         )
 
 startWithAdapter : Operator o -> Adapter o -> Parser o
 startWithAdapter startOp adapter =
-    fromFriendlyDefinition
+    fromDefinition
         ( noRules |> addRule "start" startOp
-        , Just "start"
+        , "start"
         , Just adapter
         )
 
@@ -83,7 +85,8 @@ suggestStartRule grammar maybeName =
         Nothing ->
             case grammar |> getRule "start" of
                 Just _ -> "start"
-                Nothing -> List.head Dict.keys |> Maybe.withDefault "<UNKNOWN>"
+                Nothing -> List.head (Dict.keys grammar)
+                    |> Maybe.withDefault "<UNKNOWN>"
 
 
 fromFriendlyDefinition : ( Rules o, Maybe String, Maybe (Adapter o) ) -> Parser o
@@ -133,14 +136,6 @@ parseWith ( grammar, startRule, maybeAdapter ) input =
 parse : String -> Parser o -> ParseResult o
 parse input parser =
     parser input
-
-start : Operator o -> Parser o
-start op =
-    init |> startWith op
-
-startWith : Operator o -> Parser o
-startWith op =
-    addRule "start" op
 
 addRule : RuleName -> Operator o -> Grammar o -> Grammar o
 addRule name op grammar =
