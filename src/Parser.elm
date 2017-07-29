@@ -1,7 +1,7 @@
 module Parser exposing
     ( Parser, parse
-    , withRules, withRulesAt, withAdapter
-    , startFrom, startWithAdapter
+    , init, initAt, use
+    , initWithAdapter, initWithAdapterAt
     -- , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
     , getRule --, noRules, RuleName, Rules, RulesList
     -- , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
@@ -46,36 +46,28 @@ type alias Parser o =
 
 -- type alias ParserDef o = ( Grammar o, String, Maybe (Adapter o) )
 
-withRules : Rules o -> Parser o
-withRules rules =
+init : Rules o -> Parser o
+init rules =
     fromFriendlyDefinition (rules, Nothing, Nothing)
 
-withRulesAt : Rules o -> String -> Parser o
-withRulesAt rules startRule =
+initAt : Rules o -> String -> Parser o
+initAt rules startRule =
    fromFriendlyDefinition (rules, Just startRule, Nothing)
 
-withAdapter : Rules o -> Adapter o -> Parser o
-withAdapter rules adapter =
-   fromFriendlyDefinition (rules, Nothing, Just adapter)
+initWithAdapter : Rules o -> Adapter o -> Parser o
+initWithAdapter rules adapter =
+    fromFriendlyDefinition (rules, Nothing, Just adapter)
 
-withAdapterAt : Rules o -> String -> Adapter o -> Parser o
-withAdapterAt rules startRule adapter =
+initWithAdapterAt : Rules o -> String -> Adapter o -> Parser o
+initWithAdapterAt rules startRule adapter =
    fromFriendlyDefinition (rules, Just startRule, Just adapter)
 
-startFrom : Operator o -> Parser o
-startFrom startOp =
+use : Operator o -> Parser o
+use startOp =
     fromDefinition
         ( noRules |> addRule "start" startOp
         , "start"
         , Nothing
-        )
-
-startWithAdapter : Operator o -> Adapter o -> Parser o
-startWithAdapter startOp adapter =
-    fromDefinition
-        ( noRules |> addRule "start" startOp
-        , "start"
-        , Just adapter
         )
 
 suggestStartRule : Grammar o -> Maybe String -> String

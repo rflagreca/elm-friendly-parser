@@ -53,9 +53,3 @@ rules r =
     r |> Dict.foldl
         (\name op str -> str ++ (rule name op))
         "\n"
-
-
-{-| TODO -}
-parser : Parser o -> String
-parser p =
-    rules p.grammar

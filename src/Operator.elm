@@ -10,6 +10,8 @@ module Operator exposing
     , failByEndOfInput
     )
 
+ {- TODO: rename module to Grammar -}
+
 import Dict exposing (Dict)
 import Regex
 
