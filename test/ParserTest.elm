@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 import Utils exposing (..)
 import State exposing (..)
 import ParseResult exposing (..)
@@ -24,7 +24,7 @@ testStartRule : Test
 testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
-            ((Parser.init alwaysTestStringAdapter)
+            ((Parser.init noRules)
                 |> expectToFailToParseWith
                     "foo"
                     (Failed NoStartRule zeroPos))
@@ -34,17 +34,17 @@ testAdapters : Test
 testAdapters =
     describe "adapters"
         [ test "should parse anything with what adapter returns" <|
-            ((Parser.start (match "abc") alwaysTestStringAdapter)
+            ((Parser.useWhileAdapting (match "abc") alwaysTestStringAdapter)
                 |> expectToParse
                     "abc"
                     "test")
         , test "should parse anything with what adapter returns, p. II" <|
-            ((Parser.start (match "abc") (\_ -> "foo"))
+            ((Parser.useWhileAdapting (match "abc") (\_ -> "foo"))
                 |> expectToParse
                     "abc"
                     "foo")
         , test "should provide value of what is parsed" <|
-            ((Parser.start
+            ((Parser.useWhileAdapting
                 (match "abc")
                 (\v -> case v of
                     Match.Lexem s -> (s ++ "d")

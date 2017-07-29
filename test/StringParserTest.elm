@@ -6,7 +6,7 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 import Action exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)

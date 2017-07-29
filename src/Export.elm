@@ -1,7 +1,6 @@
 module Export exposing
     ( operator
-    , rules
-    , parser
+    , grammar
     )
 
 {-|
@@ -14,8 +13,7 @@ module Export exposing
 
 import Dict
 
-import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 
 rootOperator : Operator o -> String
 rootOperator op =
@@ -48,8 +46,8 @@ rule name op =
 
 
 {-| TODO -}
-rules : Grammar o -> String
-rules r =
+grammar : Grammar o -> String
+grammar r =
     r |> Dict.foldl
         (\name op str -> str ++ (rule name op))
         "\n"

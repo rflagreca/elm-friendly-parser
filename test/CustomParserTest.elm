@@ -3,7 +3,7 @@ module CustomParserTest exposing (suite)
 import Test exposing (..)
 
 import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 import Match
 import ParseResult exposing (..)
 import Action exposing (..)

@@ -1,18 +1,13 @@
 module Parser exposing
     ( Parser, parse
-    , init, initAt, use
+    , init, initAt
+    , use, useWhileAdapting
     , initWithAdapter, initWithAdapterAt
-    -- , Position, ParseResult(..), FailureReason(..), Expectation(..), Sample(..)
-    , getRule --, noRules, RuleName, Rules, RulesList
-    -- , ActionResult(..), PrefixActionResult(..), UserCode, UserPrefixCode
-    -- , InputType(..)
-    -- , Adapter
-    -- , Operator(..), State
     )
 
 import Dict exposing (..)
 
-import Operator exposing
+import Grammar exposing
     ( Operator
     , Context
     , execute
@@ -20,6 +15,7 @@ import Operator exposing
     , RuleName
     , Grammar
     , Rules
+    , empty
     , noRules
     , getCurrentChar
     , toResult
@@ -65,9 +61,17 @@ initWithAdapterAt rules startRule adapter =
 use : Operator o -> Parser o
 use startOp =
     fromDefinition
-        ( noRules |> addRule "start" startOp
+        ( Grammar.empty |> addRule "start" startOp
         , "start"
         , Nothing
+        )
+
+useWhileAdapting : Operator o -> Adapter o -> Parser o
+useWhileAdapting startOp adapter =
+    fromDefinition
+        ( Grammar.empty |> addRule "start" startOp
+        , "start"
+        , Just adapter
         )
 
 suggestStartRule : Grammar o -> Maybe String -> String

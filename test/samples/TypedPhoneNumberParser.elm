@@ -1,7 +1,7 @@
 module Samples.TypedPhoneNumberParser exposing (..)
 
 import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 import Action exposing (..)
 import Match
 import ParseResult exposing (..)

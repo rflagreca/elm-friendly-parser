@@ -33,7 +33,7 @@ module StringParser.Parser exposing
 
 -}
 import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 import ParseResult exposing (..)
 import Match exposing (..)
 
@@ -44,11 +44,11 @@ type ReturnType = Chunk String | Chunks (List String) | In_Rule String ReturnTyp
 type alias Parser = Parser.Parser ReturnType
 
 {-| TODO -}
-type alias Operator = Operator.Operator ReturnType
+type alias Operator = Grammar.Operator ReturnType
 {-| TODO -}
-type alias Grammar = Operator.Grammar ReturnType
+type alias Grammar = Grammar.Grammar ReturnType
 {-| TODO -}
-type alias Rules = Operator.Rules ReturnType
+type alias Rules = Grammar.Rules ReturnType
 {-| TODO -}
 type alias Token = Match.Token ReturnType
 

@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect
 
 import Parser exposing (..)
-import Operator exposing (..)
+import Grammar exposing (..)
 import ParseResult exposing (..)
 import Export as Export exposing (..)
 

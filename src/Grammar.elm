@@ -1,7 +1,7 @@
-module Operator exposing
+module Grammar exposing
     ( Operator(..)
     , Context
-    , RuleName, Rule, Grammar, Rules, noRules
+    , RuleName, Rule, Grammar, Rules, noRules, empty
     , ch, match, choice, seqnc, maybe, text, any, some, and, not
     , action, pre, xpre, label, call, re, redesc
     , execute
@@ -416,8 +416,11 @@ execRegex regex maybeDesc ctx =
 -- FIMXE: the functions which need no whole context, should use just State
 ---       (and may be moved to State module)
 
-noRules : Grammar o
-noRules = Dict.empty
+noRules : Rules o
+noRules = []
+
+empty : Grammar o
+empty = Dict.empty
 
 matched : Token o -> State o -> OperatorResult o
 matched token state =
