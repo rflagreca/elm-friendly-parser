@@ -8,11 +8,9 @@ module Parser exposing
 import Dict exposing (..)
 
 import Grammar exposing
-    ( Operator
-    , Context
+    ( Context
     , execute
     , Rules
-    , RuleName
     , Grammar
     , Rules
     , empty
@@ -32,6 +30,7 @@ import ParseResult exposing
     , Expectation(..)
     , Sample(..)
     )
+import Operator exposing (Operator, RuleName)
 import Match exposing (Adapter, Token)
 
 type alias Parser o =

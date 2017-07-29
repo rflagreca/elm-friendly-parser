@@ -34,6 +34,7 @@ module StringParser.Parser exposing
 -}
 import Parser exposing (..)
 import Grammar exposing (..)
+import Operator exposing (..)
 import ParseResult exposing (..)
 import Match exposing (..)
 
@@ -44,7 +45,7 @@ type ReturnType = Chunk String | Chunks (List String) | In_Rule String ReturnTyp
 type alias Parser = Parser.Parser ReturnType
 
 {-| TODO -}
-type alias Operator = Grammar.Operator ReturnType
+type alias Operator = Operator.Operator ReturnType
 {-| TODO -}
 type alias Grammar = Grammar.Grammar ReturnType
 {-| TODO -}

@@ -5,6 +5,7 @@ import Expect
 
 import Parser exposing (..)
 import Grammar exposing (..)
+import Operator exposing (..)
 import Utils exposing (..)
 import State exposing (..)
 import ParseResult exposing (..)

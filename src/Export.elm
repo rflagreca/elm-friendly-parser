@@ -14,6 +14,7 @@ module Export exposing
 import Dict
 
 import Grammar exposing (..)
+import Operator exposing (..)
 
 rootOperator : Operator o -> String
 rootOperator op =

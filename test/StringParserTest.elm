@@ -7,6 +7,7 @@ import Expect
 
 import Parser exposing (..)
 import Grammar exposing (..)
+import Operator exposing (..)
 import Action exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)

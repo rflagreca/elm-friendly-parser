@@ -4,6 +4,7 @@ import Test exposing (..)
 
 import Parser exposing (..)
 import Grammar exposing (..)
+import Operator exposing (..)
 import Match
 import ParseResult exposing (..)
 import Action exposing (..)
