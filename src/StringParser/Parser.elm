@@ -1,6 +1,6 @@
 module StringParser.Parser exposing
     ( Parser
-    , init, start, withRules
+    , init, use
     , ParseResult
     , ReturnType(..)
     , Grammar, Rules, Operator, Token
@@ -56,12 +56,12 @@ type alias Token = Match.Token ReturnType
 type alias ParseResult = ParseResult.ParseResult ReturnType
 
 {-| TODO -}
-init : Parser
+init : Rules -> Parser
 init = Parser.init
 
 {-| TODO -}
-start : Operator -> Parser
-start = Parser.start
+use : Operator -> Parser
+use = Parser.use
 
 -- startWith : Operator -> BasicParser -> BasicParser
 -- startWith = Parser.startWith
@@ -71,10 +71,6 @@ start = Parser.start
 
 -- parse : BasicParser -> String -> ParseResult
 -- parse = Parser.parse
-
-{-| TODO -}
-withRules : Rules -> Parser
-withRules rules = init |> Parser.withRules rules
 
 {-
 adapter : Token -> ReturnType
