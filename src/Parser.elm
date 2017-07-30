@@ -8,13 +8,14 @@ module Parser exposing
 import Dict exposing (..)
 
 import Grammar exposing
-    ( Context
-    , execute
-    , Rules
-    , Grammar
+    ( Grammar
     , Rules
     , empty
     , noRules
+    )
+import Execute exposing
+    ( Context
+    , execute
     , getCurrentChar
     , toResult
     , failByEndOfInput
