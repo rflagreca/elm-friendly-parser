@@ -1,6 +1,6 @@
 module Grammar exposing
     ( Context
-    , Grammar, Rules, noRules, empty
+    , Grammar, Rules, noRules, empty, getRule
     , execute
     , getCurrentChar
     , toResult
@@ -328,13 +328,11 @@ noRules = []
 empty : Grammar o
 empty = Dict.empty
 
+-- MATCHING UTILS
+
 matched : Token o -> State o -> OperatorResult o
 matched token state =
     ( Matched token, state )
-
--- matchedFlatList : List o -> Context o -> OperatorResult o
--- matchedFlatList val ctx =
---     matchedWith (ctx.flatten (AList val)) ctx
 
 failed : FailureReason o -> State o -> OperatorResult o
 failed reason state =

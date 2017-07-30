@@ -484,37 +484,37 @@ testDefiningAndCallingRules =
         [ test "user should be able to add custom rules" <|
             let
                 ruleSpec = match "foo"
-                parser = StringParser.withRules
+                parser = StringParser.init
                     [ ( "test", ruleSpec )
                     ]
             in
                 (\() ->
                     Expect.equal
                         (Just ruleSpec)
-                        (parser |> Parser.getRule "test"))
+                        (parser |> Grammar.getRule "test"))
         , test "user should be able to call rules by name" <|
-            (StringParser.withRules
+            (StringParser.init
                 [ ( "test", match "foo" )
                 , ( "start", call "test" )
                 ]
                 |> expectToParseAsRule "foo" "foo" "test")
         , test "user should be able to call rules by name, v.2" <|
-            (StringParser.withRules
+            (StringParser.init
                 [ ( "test", match "foo" ) ]
-                |> Parser.useWith (call "test")
+                |> Parser.use (call "test")
                 |> expectToParseAsRule "foo" "foo" "test")
         , test "match should contain a rule name" <|
-            (StringParser.withRules
+            (StringParser.init
                 [ ( "test", match "foo" ) ]
-                |> Parser.useWith (call "test")
+                |> Parser.use (call "test")
                 |> expectToMatchWith
                         "foo"
                         (Chunk "test" (Chunk "foo")))
 
         , test "failure contains failed rule information" <|
-            (StringParser.withRules
+            (StringParser.init
                 [ ( "test", match "foo" ) ]
-                |> Parser.useWith (call "test")
+                |> Parser.use (call "test")
                 |> expectToFailToParseWith
                     "bar"
                     (Failed (FollowingRule "test"

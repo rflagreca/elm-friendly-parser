@@ -43,7 +43,7 @@ rules =
 init : Parser ReturnType
 init =
        Parser.init
-    |> Parser.withRules rules
+    |> Parser.use rules
     |> Parser.setStartRule "phoneNumber"
 
 parse : String -> MyParseResult ReturnType
