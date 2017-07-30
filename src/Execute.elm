@@ -1,8 +1,8 @@
 module Execute exposing
     ( Context
     , execute
-    , getCurrentChar
-    , toResult
+    , getCurrentChar -- FIXME: should not be exported
+    , toResult -- FIXME: should not be exported
     , failByEndOfInput -- FIXME: should not be exported
     )
 

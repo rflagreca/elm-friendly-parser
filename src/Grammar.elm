@@ -4,6 +4,7 @@ module Grammar exposing
     , noRules
     , empty
     , getRule
+    , fromRules
     )
 
  {- TODO: rename module to Grammar -}
@@ -25,6 +26,10 @@ noRules = []
 
 empty : Grammar o
 empty = Dict.empty
+
+fromRules : Rules o -> Grammar o
+fromRules rules =
+    Dict.fromList rules
 
 getRule : RuleName -> Grammar o -> Maybe (Operator o)
 getRule name grammar =

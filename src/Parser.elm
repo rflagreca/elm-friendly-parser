@@ -1,17 +1,20 @@
 module Parser exposing
     ( Parser, parse
-    , init, initAt
-    , use, useWhileAdapting
-    , initWithAdapter, initWithAdapterAt
+    , withRules, withGrammar
+    , use, setStartRule, adaptWith
     )
 
 import Dict exposing (..)
 
+import Operator exposing
+    ( RuleName
+    )
 import Grammar exposing
     ( Grammar
     , Rules
     , empty
     , noRules
+    , fromRules
     )
 import Execute exposing
     ( Context
@@ -34,45 +37,34 @@ import ParseResult exposing
 import Operator exposing (Operator, RuleName)
 import Match exposing (Adapter, Token)
 
+type alias Config o =
+    (Grammar o, RuleName, Maybe (Adapter o))
+
 type alias Parser o =
     String -> ParseResult o
 
 -- type alias ConfiguredParser o =
---     ParserDef o -> Parser o
+--     Config o -> Parser o
 
--- type alias ParserDef o = ( Grammar o, String, Maybe (Adapter o) )
+withRules : Rules o -> Config o
+withRules rules =
+    withGrammar (fromRules rules)
 
-init : Rules o -> Parser o
-init rules =
-    fromFriendlyDefinition (rules, Nothing, Nothing)
+withGrammar : Grammar o -> Config o
+withGrammar grammar =
+    ( grammar, "start", Nothing )
 
-initAt : Rules o -> String -> Parser o
-initAt rules startRule =
-   fromFriendlyDefinition (rules, Just startRule, Nothing)
-
-initWithAdapter : Rules o -> Adapter o -> Parser o
-initWithAdapter rules adapter =
-    fromFriendlyDefinition (rules, Nothing, Just adapter)
-
-initWithAdapterAt : Rules o -> String -> Adapter o -> Parser o
-initWithAdapterAt rules startRule adapter =
-   fromFriendlyDefinition (rules, Just startRule, Just adapter)
-
-use : Operator o -> Parser o
+use : Operator o -> Config o
 use startOp =
-    fromDefinition
-        ( Grammar.empty |> addRule "start" startOp
-        , "start"
-        , Nothing
-        )
+    withGrammar (Grammar.empty |> addRule "start" startOp)
 
-useWhileAdapting : Operator o -> Adapter o -> Parser o
-useWhileAdapting startOp adapter =
-    fromDefinition
-        ( Grammar.empty |> addRule "start" startOp
-        , "start"
-        , Just adapter
-        )
+setStartRule : RuleName -> Config o -> Config o
+setStartRule startRule ( grammar, _, maybeAdapter ) =
+    ( grammar, startRule, maybeAdapter )
+
+adaptWith : Adapter o -> Config o -> Config o
+adaptWith adapter ( grammar, startRule, _ ) =
+    ( grammar, startRule, Just adapter )
 
 suggestStartRule : Grammar o -> Maybe String -> String
 suggestStartRule grammar maybeName =
@@ -84,21 +76,8 @@ suggestStartRule grammar maybeName =
                 Nothing -> List.head (Dict.keys grammar)
                     |> Maybe.withDefault "<UNKNOWN>"
 
-
-fromFriendlyDefinition : ( Rules o, Maybe String, Maybe (Adapter o) ) -> Parser o
-fromFriendlyDefinition ( rules, maybeStartRule, maybeAdapter ) =
-    let
-        grammar = Dict.fromList rules
-        startRule = maybeStartRule |> suggestStartRule grammar
-    in
-        fromDefinition ( grammar, startRule, maybeAdapter )
-
-fromDefinition : ( Grammar o, String, Maybe (Adapter o) ) -> Parser o
-fromDefinition =
-    parseWith
-
-parseWith : ( Grammar o, String, Maybe (Adapter o) ) -> String -> ParseResult o
-parseWith ( grammar, startRule, maybeAdapter ) input =
+parse : Config o -> String -> ParseResult o
+parse ( grammar, startRule, maybeAdapter ) input =
     let
 
         state = (State.init input)
@@ -126,12 +105,9 @@ parseWith ( grammar, startRule, maybeAdapter ) input =
                         Err reason -> Failed reason (findPosition lastState)
             Nothing -> Failed NoStartRule (0, 0)
 
--- FIXME: change ParseResult to some type which returns Matched | Failed (FailureReason, Position)
---        may be change ParseResult to `OpParseResult or OpSuccess = OpMatched | OpFailed` and keep --        it private.
---        Fix the docs in the intro then.
-parse : String -> Parser o -> ParseResult o
-parse input parser =
-    parser input
+-- parse : String -> Parser o -> ParseResult o
+-- parse input parser =
+--     parser input
 
 addRule : RuleName -> Operator o -> Grammar o -> Grammar o
 addRule name op grammar =
