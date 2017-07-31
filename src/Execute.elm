@@ -1,9 +1,8 @@
 module Execute exposing
     ( Context
     , execute
-    , getCurrentChar -- FIXME: should not be exported
-    , toResult -- FIXME: should not be exported
-    , failByEndOfInput -- FIXME: should not be exported
+    , try
+    , tryOne
     )
 
 import Regex
@@ -31,6 +30,7 @@ import ParseResult exposing
     ( Expectation(..)
     , FailureReason(..)
     , Sample(..)
+    , ParseResult
     )
 import Match exposing
     ( Adapter
@@ -317,6 +317,58 @@ execRegex regex maybeDesc ctx =
                     state |> failedRE description
             Nothing -> state |> failedRE description
 
+-- PARSING THE WHOLE INPUT
+
+try : (Grammar o, RuleName, Maybe (Adapter o)) -> String -> ParseResult o
+try (grammar, startRule, maybeAdapter) input =
+    let
+        state = (State.init input)
+        context =
+            { adapter = maybeAdapter
+            , grammar = grammar
+            , state = state
+            }
+    in
+        case Dict.get startRule grammar of
+            Just startOperator ->
+                let
+                    ( opResult, lastState ) = (execute startOperator context)
+                in
+                    case toResult opResult of
+                        Ok success ->
+                            if lastState.position == (String.length input) then
+                                ParseResult.Matched success
+                            else
+                                let
+                                    ( reason, position ) = lastState |> failByEndOfInput
+                                in
+                                    ParseResult.Failed reason position
+                        Err reason -> ParseResult.Failed reason (findPosition lastState)
+            Nothing -> ParseResult.Failed NoStartRule (0, 0)
+
+tryOne : Operator o -> String -> ParseResult o
+tryOne operator input =
+    let
+        state = (State.init input)
+        context =
+            { adapter = Nothing
+            , grammar = Grammar.empty
+            , state = state
+            }
+    in
+        let
+            ( opResult, lastState ) = (execute operator context)
+        in
+            case toResult opResult of
+                Ok success ->
+                    if lastState.position == (String.length input) then
+                        ParseResult.Matched success
+                    else
+                        let
+                            ( reason, position ) = lastState |> failByEndOfInput
+                        in
+                            ParseResult.Failed reason position
+                Err reason -> ParseResult.Failed reason (findPosition lastState)
 
 -- MATCHING UTILS
 

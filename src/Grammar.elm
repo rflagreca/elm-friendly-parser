@@ -4,6 +4,7 @@ module Grammar exposing
     , noRules
     , empty
     , getRule
+    , addRule
     , fromRules
     )
 
@@ -35,3 +36,6 @@ getRule : RuleName -> Grammar o -> Maybe (Operator o)
 getRule name grammar =
     Dict.get name grammar
 
+addRule : RuleName -> Operator o -> Grammar o -> Grammar o
+addRule name op grammar =
+    ( grammar |> Dict.insert name op )

@@ -15,18 +15,14 @@ import Grammar exposing
     , empty
     , noRules
     , fromRules
+    , getRule
+    , addRule
     )
 import Execute exposing
     ( Context
     , execute
-    , getCurrentChar
-    , toResult
-    , failByEndOfInput
-    )
-import State as State exposing
-    ( State
-    , Position
-    , findPosition
+    , try
+    , tryOne
     )
 import ParseResult exposing
     ( ParseResult(..)
@@ -45,6 +41,10 @@ type alias Parser o =
 
 -- type alias ConfiguredParser o =
 --     Config o -> Parser o
+
+init : Config o -> Parser o
+init config =
+    (\input -> input |> parseWith config)
 
 withRules : Rules o -> Config o
 withRules rules =
@@ -76,46 +76,20 @@ suggestStartRule grammar maybeName =
                 Nothing -> List.head (Dict.keys grammar)
                     |> Maybe.withDefault "<UNKNOWN>"
 
-parse : Config o -> String -> ParseResult o
-parse ( grammar, startRule, maybeAdapter ) input =
-    let
+parse : String -> Parser o -> ParseResult o
+parse input parser =
+    parser input
 
-        state = (State.init input)
-        context =
-            { adapter = maybeAdapter
-            , grammar = grammar
-            , state = state
-            }
-    in
-        case Dict.get startRule grammar of
-            Just startOperator ->
-                -- TODO: extractParseResult (execCall parser.startRule context)
-                let
-                    ( opResult, lastState ) = (execute startOperator context)
-                in
-                    case toResult opResult of
-                        Ok success ->
-                            if lastState.position == (String.length input) then
-                                Matched success
-                            else
-                                let
-                                    ( reason, position ) = lastState |> failByEndOfInput
-                                in
-                                    Failed reason position
-                        Err reason -> Failed reason (findPosition lastState)
-            Nothing -> Failed NoStartRule (0, 0)
+parseWith : Config o -> String -> ParseResult o
+parseWith = Execute.try
+
+fromOperator : Operator o -> Parser o
+fromOperator startOperator =
+    (\input -> input |> Execute.tryOne startOperator)
 
 -- parse : String -> Parser o -> ParseResult o
 -- parse input parser =
 --     parser input
-
-addRule : RuleName -> Operator o -> Grammar o -> Grammar o
-addRule name op grammar =
-    ( grammar |> Dict.insert name op )
-
-getRule : RuleName -> Grammar o -> Maybe (Operator o)
-getRule name grammar =
-    Dict.get name grammar
 
 -- UTILS
 
@@ -130,15 +104,3 @@ getRule name grammar =
 -- opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
 -- opResultToMaybe ( parseResult, ctx ) =
 --     ( parseResultToMaybe parseResult, ctx )
-
-parseResultToMaybe : ParseResult o -> Maybe (Token o)
-parseResultToMaybe result =
-    case result of
-        Matched v -> Just v
-        Failed _ _ -> Nothing
-
-parseResultToResult : ParseResult o -> Result (FailureReason o) (Token o)
-parseResultToResult result =
-    case result of
-        Matched v -> Ok v
-        Failed f _ -> Err f
