@@ -11,6 +11,7 @@ import Operator exposing (..)
 import Action exposing (..)
 import ParseResult exposing (..)
 import State exposing (Position)
+import Match exposing (..)
 import StringParser.Parser as StringParser exposing (..)
 
 import Utils exposing (..)
@@ -45,7 +46,8 @@ testStartRule : Test
 testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
-            (StringParser.init
+            (StringParser.withRules []
+                |> Parser.configure
                 |> expectToFailToParseWith
                     "foo"
                     (Failed NoStartRule (0, 0)))
@@ -484,42 +486,45 @@ testDefiningAndCallingRules =
         [ test "user should be able to add custom rules" <|
             let
                 ruleSpec = match "foo"
-                parser = StringParser.init
+                parser = StringParser.withRules
                     [ ( "test", ruleSpec )
-                    ]
+                    ] |> Parser.configure
             in
                 (\() ->
                     Expect.equal
                         (Just ruleSpec)
                         (parser |> Grammar.getRule "test"))
         , test "user should be able to call rules by name" <|
-            (StringParser.init
+            (StringParser.withRules
                 [ ( "test", match "foo" )
                 , ( "start", call "test" )
                 ]
+                |> Parser.configure
                 |> expectToParseAsRule "foo" "foo" "test")
         , test "user should be able to call rules by name, v.2" <|
-            (StringParser.init
+            (StringParser.withRules
                 [ ( "test", match "foo" ) ]
                 |> Parser.use (call "test")
+                |> Parser.configure
                 |> expectToParseAsRule "foo" "foo" "test")
         , test "match should contain a rule name" <|
-            (StringParser.init
+            (StringParser.withRules
                 [ ( "test", match "foo" ) ]
                 |> Parser.use (call "test")
+                |> Parser.configure
                 |> expectToMatchWith
                         "foo"
                         (Chunk "test" (Chunk "foo")))
 
         , test "failure contains failed rule information" <|
-            (StringParser.init
+            (StringParser.withRules
                 [ ( "test", match "foo" ) ]
                 |> Parser.use (call "test")
+                |> Parser.configure
                 |> expectToFailToParseWith
                     "bar"
                     (Failed (FollowingRule "test"
                         (ByExpectation (ExpectedValue "foo", GotValue "b"))) (0, 0))) -- GotValue "bar"
-
         ]
 
 
@@ -529,18 +534,21 @@ testReportingPosition =
         [ test "no position is passed when match was successful" <|
             ((StringParser.use <|
                 match "foo")
+                |> Parser.configure
                 |> expectToParseWith
                     "foo"
                     (Matched (Chunk "foo")))
         , test "properly reports position of the failure" <|
             ((StringParser.use <|
                 seqnc [ match "fo", match "x" ])
+                |> Parser.configure
                 |> expectToFailToParseAt
                     "foo"
                     (0, 2))
         , test "properly reports position of the failure even for a multiline input" <|
             ((StringParser.use <|
                 seqnc [ match "foo", re "[\n]", match "ba", match "x" ])
+                |> Parser.configure
                 |> expectToFailToParseAt
                     "foo\nbar"
                     (1, 2))
@@ -570,7 +578,7 @@ expectToParseAsRule : String -> String -> String -> StringParser.Parser -> (() -
 expectToParseAsRule input output ruleName parser =
     parser |> expectToParseWith
         input
-        (Matched (StringParser.InRule ruleName (Chunk output)))
+        (Matched (Match.InRule ruleName (Chunk output)))
 
 expectToParseNested : String -> List String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =

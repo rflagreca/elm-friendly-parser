@@ -5,7 +5,7 @@ import Test exposing (..)
 import Parser exposing (..)
 import Grammar exposing (..)
 import Operator exposing (..)
-import Match
+import Match exposing (..)
 import ParseResult exposing (..)
 import Action exposing (..)
 
@@ -30,14 +30,16 @@ type alias MyReturnType = Int
 
 start : Operator MyReturnType -> Parser MyReturnType
 start op =
-    Parser.start op adapter
+    Parser.use op |> Parser.adaptWith adapter |> Parser.configure
 
-adapter : Adapter.InputType MyReturnType -> MyReturnType
+adapter : Match.Token MyReturnType -> MyReturnType
 adapter input =
     case input of
-        Adapter.AValue str -> String.length str
-        Adapter.AList list -> List.length list
-        Adapter.ARule name value -> String.length name
+        Match.NoLexem -> 0
+        Match.Lexem str -> String.length str
+        Match.Tokens list -> List.length list
+        Match.InRule name value -> String.length name
+        Match.My v -> v
 
 -- CUSTOM : THE TEST
 
@@ -76,7 +78,7 @@ arithmeticsParserTest =
             (ArithmeticsParser.init |>
                 expectToMatchWith
                     "2 * (3 + 4)"
-                    (ArithmeticsParser.ANumber 14))
+                    (ArithmeticsParser.Number 14))
         ]
 
 phoneNumberParserTest : Test
