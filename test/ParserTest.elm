@@ -25,7 +25,8 @@ testStartRule : Test
 testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
-            ((Parser.init noRules)
+            (Parser.withRules noRules
+                |> Parser.configure
                 |> expectToFailToParseWith
                     "foo"
                     (Failed NoStartRule zeroPos))
@@ -35,21 +36,26 @@ testAdapters : Test
 testAdapters =
     describe "adapters"
         [ test "should parse anything with what adapter returns" <|
-            ((Parser.useWhileAdapting (match "abc") alwaysTestStringAdapter)
+            (Parser.use (match "abc")
+                |> Parser.adaptWith alwaysTestStringAdapter
+                |> Parser.configure
                 |> expectToParse
                     "abc"
                     "test")
         , test "should parse anything with what adapter returns, p. II" <|
-            ((Parser.useWhileAdapting (match "abc") (\_ -> "foo"))
+            (Parser.use (match "abc")
+                |> Parser.adaptWith (\_ -> "foo")
+                |> Parser.configure
                 |> expectToParse
                     "abc"
                     "foo")
         , test "should provide value of what is parsed" <|
-            ((Parser.useWhileAdapting
-                (match "abc")
-                (\v -> case v of
-                    Match.Lexem s -> (s ++ "d")
-                    _ -> "failed"))
+            (Parser.use (match "abc")
+                |> Parser.adaptWith
+                    (\v -> case v of
+                        Match.Lexem s -> (s ++ "d")
+                        _ -> "failed")
+                |> Parser.configure
                 |> expectToParse
                     "abc"
                     "abcd")

@@ -1,5 +1,5 @@
 module Parser exposing
-    ( Parser, parse
+    ( Parser, Config, parse, configure
     , withRules, withGrammar
     , use, setStartRule, adaptWith
     )
@@ -42,8 +42,8 @@ type alias Parser o =
 -- type alias ConfiguredParser o =
 --     Config o -> Parser o
 
-init : Config o -> Parser o
-init config =
+configure : Config o -> Parser o
+configure config =
     (\input -> input |> parseWith config)
 
 withRules : Rules o -> Config o

@@ -42,13 +42,13 @@ rules =
 
 init : Parser ReturnType
 init =
-       Parser.init
-    |> Parser.use rules
+  Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
+    |> Parser.configure
 
 parse : String -> MyParseResult ReturnType
 parse input =
-  Parser.init
+  init
     |> Parser.parse input
     |> toMyResult adapter
 

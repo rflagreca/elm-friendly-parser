@@ -1,6 +1,7 @@
 module StringParser.Parser exposing
     ( Parser
-    , init, use
+    , Config
+    , configure, withRules, use
     , ParseResult
     , ReturnType(..)
     , Grammar, Rules, Operator, Token
@@ -39,10 +40,12 @@ import ParseResult exposing (..)
 import Match exposing (..)
 
 {-| TODO -}
-type ReturnType = Chunk String | Chunks (List String) | In_Rule String ReturnType
+type ReturnType = Chunk String | Chunks (List ReturnType) | In_Rule String ReturnType
 
 {-| TODO -}
 type alias Parser = Parser.Parser ReturnType
+{-| TODO -}
+type alias Config = Parser.Config ReturnType
 
 {-| TODO -}
 type alias Operator = Operator.Operator ReturnType
@@ -56,24 +59,31 @@ type alias Token = Match.Token ReturnType
 {-| TODO -}
 type alias ParseResult = ParseResult.ParseResult ReturnType
 
-{-| TODO -}
-init : Rules -> Parser
-init = Parser.init
+type alias Adapter k = (ReturnType -> k)
 
 {-| TODO -}
-use : Operator -> Parser
+configure : Config -> Parser
+configure = Parser.configure
+
+{-| TODO -}
+withRules : Rules -> Config
+withRules = Parser.withRules
+
+{-| TODO -}
+withGramar : Grammar -> Config
+withGramar = Parser.withGrammar
+
+{-| TODO -}
+use : Operator -> Config
 use = Parser.use
 
--- startWith : Operator -> BasicParser -> BasicParser
--- startWith = Parser.startWith
+setStartRule : RuleName -> Config -> Config
+setStartRule = Parser.setStartRule
 
--- addStartRule : Operator -> BasicParser -> BasicParser
--- addStartRule = Parser.addStartRule
+-- adaptWith : Adapter k -> Config -> Config
+-- adaptWith userAdapter cfg =
+--     Parser.adaptWith adapter cfg
 
--- parse : BasicParser -> String -> ParseResult
--- parse = Parser.parse
-
-{-
 adapter : Token -> ReturnType
 adapter token =
     case token of
@@ -81,4 +91,3 @@ adapter token =
         Match.Lexem str -> Chunk str
         Match.Tokens tokens -> Chunks (List.map adapter tokens)
         _ -> Chunk ""
--}

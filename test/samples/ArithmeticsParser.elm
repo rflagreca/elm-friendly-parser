@@ -80,9 +80,9 @@ rules =
 {- init and set start rule to "Expression" -}
 init : Parser ReturnType
 init =
-       Parser.init
-    |> Parser.withRules rules
+       Parser.withRules rules
     |> Parser.setStartRule "Expression"
+    |> Parser.configure
 
 reduceAdditionAndSubtraction : Token ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =

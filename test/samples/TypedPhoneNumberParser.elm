@@ -67,9 +67,9 @@ rules =
 
 init : Parser ReturnType
 init =
-       Parser.init
-    |> Parser.withRules rules
+       Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
+    |> Parser.configure
 
 adapter : Match.Token PhoneNumberPart -> ReturnType
 adapter result =
