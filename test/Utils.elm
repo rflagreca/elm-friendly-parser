@@ -11,43 +11,53 @@ import Expect
 -- expectToParse input output parser =
 --     parser |> expectToParseWith input (Matched (Custom output))
 
-expectToParseWith : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
-expectToParseWith input result parser =
+expectToParseWith : String -> ParseResult o -> Config o -> (() -> Expect.Expectation)
+expectToParseWith input result config =
     \() ->
-        Expect.equal
-            result
-            (parser |> parse input)
+        let
+            parser = Parser.configure config
+        in
+            Expect.equal
+                result
+                (parser |> parse input)
 
-expectToMatchWith : String -> o -> Parser o -> (() -> Expect.Expectation)
-expectToMatchWith input value parser =
-    parser |> expectToParseWith
+expectToMatchWith : String -> o -> Config o -> (() -> Expect.Expectation)
+expectToMatchWith input value config =
+    config |> expectToParseWith
         input
         (Matched (My value))
 
-expectToFailToParse : String -> Parser o -> (() -> Expect.Expectation)
-expectToFailToParse input parser =
-    \() ->
-        Expect.true
-            ("Expected to fail to parse \"" ++ input ++ "\".")
-            (isNotParsed (parser |> parse input))
-
-expectToFailToParseWith : String -> ParseResult o -> Parser o -> (() -> Expect.Expectation)
-expectToFailToParseWith input expectedFailure parser =
+expectToFailToParse : String -> Config o -> (() -> Expect.Expectation)
+expectToFailToParse input config =
     \() ->
         let
+            parser = Parser.configure config
+        in
+            Expect.true
+                ("Expected to fail to parse \"" ++ input ++ "\".")
+                (isNotParsed (parser |> parse input))
+
+expectToFailToParseWith : String -> ParseResult o -> Config o -> (() -> Expect.Expectation)
+expectToFailToParseWith input expectedFailure config =
+    \() ->
+        let
+            parser = Parser.configure config
             result = parser |> parse input
         in
             case result of
                 Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
                 actualFailure -> Expect.equal actualFailure expectedFailure
 
-expectToFailToParseAt : String -> Position -> Parser o -> (() -> Expect.Expectation)
-expectToFailToParseAt input expectedPosition parser =
+expectToFailToParseAt : String -> Position -> Config o -> (() -> Expect.Expectation)
+expectToFailToParseAt input expectedPosition config =
      \() ->
-        case parser |> parse input of
-            Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
-            Failed _ position ->
-                Expect.equal position expectedPosition
+        let
+            parser = Parser.configure config
+        in
+            case parser |> parse input of
+                Matched _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
+                Failed _ position ->
+                    Expect.equal position expectedPosition
 
 -- expectToGetResultOfParsing : String -> ( ParseResult o, Maybe Position ) -> Parser o -> (() -> Expect.Expectation)
 -- expectToGetResultOfParsing input result parser =

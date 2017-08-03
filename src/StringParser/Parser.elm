@@ -40,7 +40,7 @@ import ParseResult exposing (..)
 import Match exposing (..)
 
 {-| TODO -}
-type ReturnType = Chunk String | Chunks (List ReturnType) | In_Rule String ReturnType
+type ReturnType = Chunk String | Chunks (List ReturnType) | InRule String ReturnType
 
 {-| TODO -}
 type alias Parser = Parser.Parser ReturnType
@@ -76,6 +76,10 @@ withGramar = Parser.withGrammar
 {-| TODO -}
 use : Operator -> Config
 use = Parser.use
+
+{-| TODO -}
+andUse : Operator -> Config -> Config
+andUse = Parser.andUse
 
 setStartRule : RuleName -> Config -> Config
 setStartRule = Parser.setStartRule

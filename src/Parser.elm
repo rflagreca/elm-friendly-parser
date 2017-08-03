@@ -1,7 +1,7 @@
 module Parser exposing
     ( Parser, Config, parse, configure
     , withRules, withGrammar
-    , use, setStartRule, adaptWith
+    , use, setStartRule, adaptWith, andUse
     )
 
 import Dict exposing (..)
@@ -57,6 +57,16 @@ withGrammar grammar =
 use : Operator o -> Config o
 use startOp =
     withGrammar (Grammar.empty |> addRule "start" startOp)
+
+andUse : Operator o -> Config o -> Config o
+andUse startOp ( grammar, startRule, maybeAdapter ) =
+    let
+        config = withGrammar (grammar |> addRule "start" startOp)
+                 |> setStartRule startRule
+    in
+        case maybeAdapter of
+            Just adapter -> config |> adaptWith adapter
+            Nothing -> config
 
 setStartRule : RuleName -> Config o -> Config o
 setStartRule startRule ( grammar, _, maybeAdapter ) =

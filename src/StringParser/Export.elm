@@ -21,7 +21,7 @@ returnType : StringParser.ReturnType -> String
 returnType value =
     case value of
         StringParser.Chunk str -> "\"" ++ str ++ "\""
-        StringParser.Chunks list -> "[ " ++ (String.join ", " list) ++ " ]"
+        StringParser.Chunks list -> "[ " ++ (List.map returnType list |> String.join ", ") ++ " ]"
         StringParser.InRule name v -> name ++ ":" ++ (returnType v)
 
 -- sample : Parser.Sample -> String

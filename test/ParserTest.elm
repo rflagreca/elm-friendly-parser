@@ -26,7 +26,6 @@ testStartRule =
     describe "no start rule"
         [ test "should fail to parse anything without \"start\" rule" <|
             (Parser.withRules noRules
-                |> Parser.configure
                 |> expectToFailToParseWith
                     "foo"
                     (Failed NoStartRule zeroPos))
@@ -38,14 +37,12 @@ testAdapters =
         [ test "should parse anything with what adapter returns" <|
             (Parser.use (match "abc")
                 |> Parser.adaptWith alwaysTestStringAdapter
-                |> Parser.configure
                 |> expectToParse
                     "abc"
                     "test")
         , test "should parse anything with what adapter returns, p. II" <|
             (Parser.use (match "abc")
                 |> Parser.adaptWith (\_ -> "foo")
-                |> Parser.configure
                 |> expectToParse
                     "abc"
                     "foo")
@@ -55,7 +52,6 @@ testAdapters =
                     (\v -> case v of
                         Match.Lexem s -> (s ++ "d")
                         _ -> "failed")
-                |> Parser.configure
                 |> expectToParse
                     "abc"
                     "abcd")
@@ -65,6 +61,6 @@ alwaysTestStringAdapter : Match.Token String -> String
 alwaysTestStringAdapter val =
     "test"
 
-expectToParse : String -> String -> Parser o -> (() -> Expect.Expectation)
-expectToParse input output parser =
-    expectToParseWith input (Matched (Match.Lexem output)) parser
+expectToParse : String -> String -> Config o -> (() -> Expect.Expectation)
+expectToParse input output config =
+    expectToParseWith input (Matched (Match.Lexem output)) config
