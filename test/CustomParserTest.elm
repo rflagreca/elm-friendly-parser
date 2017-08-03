@@ -29,7 +29,7 @@ type alias MyReturnType = Int
 
 start : Operator MyReturnType -> Parser MyReturnType
 start op =
-    Parser.use op |> Parser.adaptWith adapter |> Parser.configure
+    Parser.use op |> Parser.adaptWith adapter
 
 adapter : Match.Token MyReturnType -> MyReturnType
 adapter input =

@@ -1,7 +1,6 @@
 module StringParser.Parser exposing
     ( Parser
-    , Config
-    , configure, withRules, use
+    , init, withRules, withGrammar, use
     , ParseResult
     , ReturnType(..)
     , Grammar, Rules, Operator, Token
@@ -44,8 +43,6 @@ type ReturnType = Chunk String | Chunks (List ReturnType) | InRule String Return
 
 {-| TODO -}
 type alias Parser = Parser.Parser ReturnType
-{-| TODO -}
-type alias Config = Parser.Config ReturnType
 
 {-| TODO -}
 type alias Operator = Operator.Operator ReturnType
@@ -61,30 +58,29 @@ type alias ParseResult = ParseResult.ParseResult ReturnType
 
 type alias Adapter k = (ReturnType -> k)
 
-{-| TODO -}
-configure : Config -> Parser
-configure = Parser.configure
+init : Parser
+init = Parser.init
 
 {-| TODO -}
-withRules : Rules -> Config
+withRules : Rules -> Parser
 withRules = Parser.withRules
 
 {-| TODO -}
-withGramar : Grammar -> Config
-withGramar = Parser.withGrammar
+withGrammar : Grammar -> Parser
+withGrammar = Parser.withGrammar
 
 {-| TODO -}
-use : Operator -> Config
+use : Operator -> Parser
 use = Parser.use
 
 {-| TODO -}
-andUse : Operator -> Config -> Config
+andUse : Operator -> Parser -> Parser
 andUse = Parser.andUse
 
-setStartRule : RuleName -> Config -> Config
+setStartRule : RuleName -> Parser -> Parser
 setStartRule = Parser.setStartRule
 
--- adaptWith : Adapter k -> Config -> Config
+-- adaptWith : Adapter k -> Parser -> Parser
 -- adaptWith userAdapter cfg =
 --     Parser.adaptWith adapter cfg
 

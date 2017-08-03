@@ -82,7 +82,6 @@ init : Parser ReturnType
 init =
        Parser.withRules rules
     |> Parser.setStartRule "Expression"
-    |> Parser.configure
 
 reduceAdditionAndSubtraction : Token ReturnType -> Float -> Float
 reduceAdditionAndSubtraction triplet sum =

@@ -42,3 +42,17 @@ toMyResult adapter result =
     case result of
         Matched token -> MatchedMy (adapter token)
         Failed failure position -> FailedMy failure position
+
+-- alwaysToMyResult : ParseResult o -> Maybe o
+-- -- alwaysToMyResult : ParseResult o -> a -> Result o a
+-- alwaysToMyResult result =
+--     let
+--         adapter =
+--             (\input ->
+--                 case input of
+--                     Match.Tokens list -> String.join "" (List.map adapter list)
+--                     Match.InRule name value -> adapter value
+--                     Match.My my -> Just my
+--                     _ -> Nothing)
+--     in
+--         result |> toMyResult adapter

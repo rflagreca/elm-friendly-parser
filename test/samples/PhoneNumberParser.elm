@@ -44,13 +44,13 @@ init : Parser ReturnType
 init =
   Parser.withRules rules
     |> Parser.setStartRule "phoneNumber"
-    |> Parser.configure
+    -- |> Parser.adaptWith adapter
 
 parse : String -> MyParseResult ReturnType
 parse input =
   init
     |> Parser.parse input
-    |> toMyResult adapter
+    |> toMyResult adapter -- FIXME: why reuse adapter when it's already defined in Parser?
 
 adapter : Match.Token ReturnType -> ReturnType
 adapter input =

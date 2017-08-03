@@ -563,20 +563,20 @@ nestedFailureOf strings sample position =
         , sample)) position
 
 expectToParse : String -> String -> StringParser.Config -> (() -> Expect.Expectation)
-expectToParse input output config =
-    config |> expectToParseWith
+expectToParse input output parser =
+    parser |> expectToParseWith
         input
         (Matched (Chunk output))
 
-expectToParseAsRule : String -> String -> String -> StringParser.Config -> (() -> Expect.Expectation)
-expectToParseAsRule input output ruleName config =
-    config |> expectToParseWith
+expectToParseAsRule : String -> String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
+expectToParseAsRule input output ruleName parser =
+    parser |> expectToParseWith
         input
         (Matched (Match.InRule ruleName (Chunk output)))
 
-expectToParseNested : String -> List String -> StringParser.Config -> (() -> Expect.Expectation)
-expectToParseNested input chunks config =
-    config |> expectToParseWith
+expectToParseNested : String -> List String -> StringParser.Parser -> (() -> Expect.Expectation)
+expectToParseNested input chunks parser =
+    parser |> expectToParseWith
         input
         (Matched (Chunks
                 (chunks |> List.map (\chunk -> Chunk chunk))))

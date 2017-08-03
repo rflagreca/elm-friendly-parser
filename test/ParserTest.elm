@@ -61,6 +61,6 @@ alwaysTestStringAdapter : Match.Token String -> String
 alwaysTestStringAdapter val =
     "test"
 
-expectToParse : String -> String -> Config o -> (() -> Expect.Expectation)
-expectToParse input output config =
-    expectToParseWith input (Matched (Match.Lexem output)) config
+expectToParse : String -> String -> Parser o -> (() -> Expect.Expectation)
+expectToParse input output parser =
+    expectToParseWith input (Matched (Match.Lexem output)) parser

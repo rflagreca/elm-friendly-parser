@@ -1,7 +1,7 @@
 module Parser exposing
-    ( Parser, Config, parse, configure
-    , withRules, withGrammar
-    , use, setStartRule, adaptWith, andUse
+    ( Parser, parse
+    , init, withRules, withGrammar, use
+    , setStartRule, adaptWith, andUse
     )
 
 import Dict exposing (..)
@@ -37,47 +37,47 @@ type alias Config o =
     (Grammar o, RuleName, Maybe (Adapter o))
 
 type alias Parser o =
-    String -> ParseResult o
+    { grammar: Grammar o
+    , maybeStartRule: Maybe RuleName
+    , maybeAdapter: Maybe (Adapter o)
+    }
 
--- type alias ConfiguredParser o =
---     Config o -> Parser o
+init : Parser o
+init =
+    { grammar = Grammar.empty
+    , maybeStartRule = Nothing
+    , maybeAdapter = Nothing
+    }
 
-configure : Config o -> Parser o
-configure config =
-    (\input -> input |> parseWith config)
-
-withRules : Rules o -> Config o
+withRules : Rules o -> Parser o
 withRules rules =
     withGrammar (fromRules rules)
 
-withGrammar : Grammar o -> Config o
+withGrammar : Grammar o -> Parser o
 withGrammar grammar =
-    ( grammar, "start", Nothing )
+    { init | grammar = grammar }
 
-use : Operator o -> Config o
+use : Operator o -> Parser o
 use startOp =
     withGrammar (Grammar.empty |> addRule "start" startOp)
 
-andUse : Operator o -> Config o -> Config o
-andUse startOp ( grammar, startRule, maybeAdapter ) =
-    let
-        config = withGrammar (grammar |> addRule "start" startOp)
-                 |> setStartRule startRule
-    in
-        case maybeAdapter of
-            Just adapter -> config |> adaptWith adapter
-            Nothing -> config
+andUse : Operator o -> Parser o -> Parser o
+andUse startOp parser =
+    { parser
+    | grammar = (Grammar.empty |> addRule "start" startOp)
+    , maybeStartRule = Nothing
+    }
 
-setStartRule : RuleName -> Config o -> Config o
-setStartRule startRule ( grammar, _, maybeAdapter ) =
-    ( grammar, startRule, maybeAdapter )
+setStartRule : RuleName -> Parser o -> Parser o
+setStartRule startRule parser =
+    { parser | maybeStartRule = Just startRule }
 
-adaptWith : Adapter o -> Config o -> Config o
-adaptWith adapter ( grammar, startRule, _ ) =
-    ( grammar, startRule, Just adapter )
+adaptWith : Adapter o -> Parser o -> Parser o
+adaptWith adapter parser =
+    { parser | maybeAdapter = Just adapter }
 
-suggestStartRule : Grammar o -> Maybe String -> String
-suggestStartRule grammar maybeName =
+suggestStartRule : Maybe String -> Grammar o -> String
+suggestStartRule maybeName grammar =
     case maybeName of
         Just name -> name
         Nothing ->
@@ -88,29 +88,7 @@ suggestStartRule grammar maybeName =
 
 parse : String -> Parser o -> ParseResult o
 parse input parser =
-    parser input
-
-parseWith : Config o -> String -> ParseResult o
-parseWith = Execute.try
-
-fromOperator : Operator o -> Parser o
-fromOperator startOperator =
-    (\input -> input |> Execute.tryOne startOperator)
-
--- parse : String -> Parser o -> ParseResult o
--- parse input parser =
---     parser input
-
--- UTILS
-
--- extractParseResult : OperatorResult o -> ParseResult o
--- extractParseResult opResult =
---     Tuple.first opResult
-
--- extractContext : OperatorResult o -> Context o
--- extractContext opResult =
---     Tuple.second opResult
-
--- opResultToMaybe : OperatorResult o -> ( Maybe o, Context o )
--- opResultToMaybe ( parseResult, ctx ) =
---     ( parseResultToMaybe parseResult, ctx )
+    let
+        startRule = parser.grammar |> suggestStartRule parser.maybeStartRule
+    in
+        Execute.try (parser.grammar, startRule, parser.maybeAdapter) input
