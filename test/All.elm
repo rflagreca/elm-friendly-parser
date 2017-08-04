@@ -15,8 +15,8 @@ allSuites =
     describe "Elm Friendly Parser"
         [ ParserTest.suite
         , StringParserTest.suite
-        --, CustomParserTest.suite
-        --, ParserExportTest.suite
+        , CustomParserTest.suite
+        , ParserExportTest.suite
         ]
 
 

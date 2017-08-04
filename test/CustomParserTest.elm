@@ -8,7 +8,7 @@ import Match exposing (..)
 import ParseResult exposing (..)
 import Action exposing (..)
 
-import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
+import Samples.ArithmeticParser as ArithmeticParser exposing (..)
 import Samples.PhoneNumberParser as PhoneNumberParser exposing (..)
 import Samples.TypedPhoneNumberParser as TypedPhoneNumberParser exposing (..)
 
@@ -18,7 +18,7 @@ suite : Test
 suite =
     describe "all the custom parsers"
         [ customParserTest
-        , arithmeticsParserTest
+        , arithmeticParserTest
         , phoneNumberParserTest
         , typedPhoneNumberParserTest
         ]
@@ -70,14 +70,14 @@ customParserTest =
 
 -- TEST OTHER SAMPLE PARSERS
 
-arithmeticsParserTest : Test
-arithmeticsParserTest =
-    describe "arithmetics friendly parser"
+arithmeticParserTest : Test
+arithmeticParserTest =
+    describe "arithmetic friendly parser"
         [ test "should parse the expression" <|
-            (ArithmeticsParser.init |>
+            (ArithmeticParser.init |>
                 expectToMatchWith
                     "2 * (3 + 4)"
-                    (ArithmeticsParser.Number 14))
+                    (ArithmeticParser.Number 14))
         ]
 
 phoneNumberParserTest : Test

@@ -325,17 +325,17 @@ testActionMatching =
                 |> expectToParse
                     "foo"
                     "foomagic")
-        , test "provides access to the position" <|
-            ((StringParser.use <|
-                action (match "foo")
-                    (\match state ->
-                        case match of
-                            Chunk str ->
-                                Pass (Chunk (Basics.toString (state.position)))
-                            _ -> Pass match))
-                |> expectToParse
-                    "foo"
-                    "3")
+--        , test "provides access to the position" <|
+--            ((StringParser.use <|
+--                action (match "foo")
+--                    (\match state ->
+--                        case match of
+--                            Chunk str ->
+--                                Pass (Chunk (Basics.toString (state.position)))
+--                            _ -> Pass match))
+--                |> expectToParse
+--                    "foo"
+--                    "3")
         , test "fails when user-code returned failure even when match was successful by itself" <|
             ((StringParser.use <|
                 action (match "foo")
@@ -550,8 +550,6 @@ testReportingPosition =
 
 -- UTILS
 
--- FIXME: all functions below should use Parser instance for testing, instead of Config
-
 nestedFailureOf : List (String, Sample) -> Sample -> Position -> StringParser.ParseResult
 nestedFailureOf strings sample position =
     Failed (FollowingNestedOperator
@@ -562,7 +560,7 @@ nestedFailureOf strings sample position =
             strings
         , sample)) position
 
-expectToParse : String -> String -> StringParser.Config -> (() -> Expect.Expectation)
+expectToParse : String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParse input output parser =
     parser |> expectToParseWith
         input

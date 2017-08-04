@@ -9,9 +9,9 @@ import Operator exposing (..)
 import ParseResult exposing (..)
 import Export as Export exposing (..)
 
-import StringParser.Parser as BP exposing (..)
-import StringParser.Export as BPExport exposing (..)
-import Samples.ArithmeticsParser as ArithmeticsParser exposing (..)
+import StringParser.Parser as SP exposing (..)
+import StringParser.Export as SPExport exposing (..)
+import Samples.ArithmeticParser as ArithmeticParser exposing (..)
 
 suite : Test
 suite =
@@ -21,8 +21,8 @@ suite =
         , testExportingFailures
         ]
 
-arithmeticsPEG : String
-arithmeticsPEG =
+arithmeticPEG : String
+arithmeticPEG =
     """
 Expression
 = head:Term tail:(_ ("+" / "-") _ Term)* {
@@ -51,8 +51,8 @@ _ "whitespace"
 = [ \\t\\n\\r]*
 """
 
-arithmeticsPEGNoCode : String
-arithmeticsPEGNoCode =
+arithmeticPEGNoCode : String
+arithmeticPEGNoCode =
     """
 Expression
 = head:Term tail:(_ ("+" / "-") _ Term)* { <CODE> }
@@ -74,11 +74,11 @@ _ "whitespace"
 testExportingParsers : Test
 testExportingParsers =
     describe "exporting friendly parsers"
-        [ test "should properly export Arithmetics Parser example as PEG (with no code)" <|
+        [ test "should properly export Arithmetic Parser example as PEG (with no code)" <|
             \() ->
                 Expect.equal
-                    arithmeticsPEGNoCode
-                    (Export.parser ArithmeticsParser.init)
+                    arithmeticPEGNoCode
+                    (Export.parser ArithmeticParser.init)
         ]
 
 testExportingMatches : Test
@@ -103,18 +103,18 @@ Matched
     "bar"
 """
 -}
-                    (BPExport.parseResult
+                    (SPExport.parseResult
                         (Matched
-                            (BP.RList (
-                                [ BP.RString "a"
-                                , BP.RList
-                                    [ BP.RString "foo"
-                                    , BP.RString "bar"
-                                    , BP.RList
-                                        [ BP.RString "abc" ]
-                                    , BP.RString "xyz"
+                            (SP.RList (
+                                [ SP.RString "a"
+                                , SP.RList
+                                    [ SP.RString "foo"
+                                    , SP.RString "bar"
+                                    , SP.RList
+                                        [ SP.RString "abc" ]
+                                    , SP.RString "xyz"
                                     ]
-                                , BP.RString "bar"
+                                , SP.RString "bar"
                                 ]
                             ))))
         ]
@@ -130,7 +130,7 @@ Failed at position 20:20 ( line 20, char 20 )
 
 Expected value "a", however got value "b".
 """
-                    (BPExport.parseResult
+                    (SPExport.parseResult
                         (Failed
                             (ByExpectation ( ExpectedValue "a", GotValue "b" ))
                          (20, 20)))
@@ -146,16 +146,16 @@ testExportingResult =
                     """
 Matched [ "foo" ].
 """
-                    (BP.start (choice [ match "foo", match "bar" ])
+                    (SP.start (choice [ match "foo", match "bar" ])
                               |> Parser.parse "foo"
-                              |> BPExport.parseResult)
+                              |> SPExport.parseResult)
         , test "should properly export the match, p.II" <|
             \() ->
                 Expect.equal
                     """
 Matched [ "bar" ].
 """
-                    (BP.start (choice [ match "foo", match "bar" ])
+                    (SP.start (choice [ match "foo", match "bar" ])
                               |> Parser.parse "bar"
-                              |> BPExport.parseResult)
+                              |> SPExport.parseResult)
         ]

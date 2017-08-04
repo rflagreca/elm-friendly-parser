@@ -8,7 +8,7 @@ module StringParser.Parser exposing
 
 {-| TODO
 
-@docs BasicParser
+@docs StringParser
 
 # Initialization
 
@@ -32,62 +32,62 @@ module StringParser.Parser exposing
     , InputType
 
 -}
-import Parser exposing (..)
-import Grammar exposing (..)
-import Operator exposing (..)
-import ParseResult exposing (..)
-import Match exposing (..)
+import Parser as P exposing (..)
+import Grammar as G exposing (..)
+import Operator as O exposing (..)
+import ParseResult as PR exposing (..)
+import Match as M exposing (..)
 
 {-| TODO -}
 type ReturnType = Chunk String | Chunks (List ReturnType) | InRule String ReturnType
 
 {-| TODO -}
-type alias Parser = Parser.Parser ReturnType
+type alias Parser = P.Parser ReturnType
 
 {-| TODO -}
-type alias Operator = Operator.Operator ReturnType
+type alias Operator = O.Operator ReturnType
 {-| TODO -}
-type alias Grammar = Grammar.Grammar ReturnType
+type alias Grammar = G.Grammar ReturnType
 {-| TODO -}
-type alias Rules = Grammar.Rules ReturnType
+type alias Rules = G.Rules ReturnType
 {-| TODO -}
-type alias Token = Match.Token ReturnType
+type alias Token = M.Token ReturnType
 
 {-| TODO -}
-type alias ParseResult = ParseResult.ParseResult ReturnType
+type alias ParseResult = PR.ParseResult ReturnType
 
 type alias Adapter k = (ReturnType -> k)
 
 init : Parser
-init = Parser.init
+init = P.init |> P.adaptWith adapter
 
 {-| TODO -}
 withRules : Rules -> Parser
-withRules = Parser.withRules
+withRules = P.withRules
 
 {-| TODO -}
 withGrammar : Grammar -> Parser
-withGrammar = Parser.withGrammar
+withGrammar = P.withGrammar
 
 {-| TODO -}
 use : Operator -> Parser
-use = Parser.use
+use = P.use
 
 {-| TODO -}
 andUse : Operator -> Parser -> Parser
-andUse = Parser.andUse
+andUse = P.andUse
 
 setStartRule : RuleName -> Parser -> Parser
-setStartRule = Parser.setStartRule
+setStartRule = P.setStartRule
 
 -- adaptWith : Adapter k -> Parser -> Parser
 -- adaptWith userAdapter cfg =
---     Parser.adaptWith adapter cfg
+--     P.adaptWith adapter cfg
 
 adapter : Token -> ReturnType
 adapter token =
     case token of
-        Match.NoLexem -> Chunk ""
-        Match.Lexem str -> Chunk str
-        Match.Tokens tokens -> Chunks (List.map adapter tokens)
+        M.NoLexem -> Chunk ""
+        M.Lexem str -> Chunk str
+        M.Tokens tokens -> Chunks (List.map adapter tokens)
         _ -> Chunk ""
