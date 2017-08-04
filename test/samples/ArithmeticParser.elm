@@ -1,4 +1,4 @@
-module Samples.ArithmeticsParser exposing (..)
+module Samples.ArithmeticParser exposing (..)
 
 import Parser exposing (..)
 import Grammar exposing (..)
@@ -14,7 +14,7 @@ type OperatorKind = Add | Subtract | Multiply | Divide
 {- The possible ReturnType for this parser, just extends the basic types with `ANumber` -}
 type ReturnType = Number Float | Operator OperatorKind
 
-{- The actual grammar for this parser. See `arithmetics.peg` in this directory for the source PEG Grammar -}
+{- The actual grammar for this parser. See `arithmetic.peg` in this directory for the source PEG Grammar -}
 rules : Rules ReturnType
 rules =
     [ ( "Expression"
