@@ -49,7 +49,7 @@ testStartRule =
             (StringParser.withRules []
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed NoStartRule (0, 0)))
+                    (FailedMy NoStartRule (0, 0)))
         -- FIXME: test allowing to specify custom startRule by name (below, in testDefiningAndCallingRules)
         ]
 
@@ -70,13 +70,13 @@ testBasicMatching =
                 (match "ab"))
                 |> expectToFailToParseWith
                     "abc"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "c")) (0, 2)))
+                    (FailedMy (ByExpectation (ExpectedEndOfInput, GotValue "c")) (0, 2)))
         , test "reports the failed match properly" <|
             ((StringParser.use <|
                 (match "foo"))
                 |> expectToFailToParseWith
                     "for"
-                    (Failed (ByExpectation (ExpectedValue "foo", GotValue "f")) (0, 0))) -- GotValue "for"
+                    (FailedMy (ByExpectation (ExpectedValue "foo", GotValue "f")) (0, 0))) -- GotValue "for"
         -- FIXME: test fails when not the whole input matched
         ]
 
@@ -144,7 +144,7 @@ testSequenceMatching =
                 seqnc [ match "f", match "o", match "p" ])
                 |> expectToFailToParseWith
                 "foo"
-                (Failed (ByExpectation (ExpectedValue "p", GotValue "o" )) (0, 2)))
+                (FailedMy (ByExpectation (ExpectedValue "p", GotValue "o" )) (0, 2)))
         ]
 
 testMaybeMatching : Test
@@ -191,7 +191,7 @@ testTextMatching =
                 text ( seqnc [ match "f", match "o", match "o" ]))
                 |> expectToFailToParseWith
                     "bar"
-                    (Failed (ByExpectation (ExpectedValue "f", GotValue "b")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedValue "f", GotValue "b")) (0, 0)))
         ]
 
 testAnyMatching : Test
@@ -220,7 +220,7 @@ testAnyMatching =
                 seqnc [ any (match "f"), match "bar" ])
                 |> expectToParseWith
                     "bar"
-                    (Matched (Chunks ([Chunks [], Chunk "bar"]))))
+                    (MatchedMy (Chunks ([Chunks [], Chunk "bar"]))))
         , test "properly advances the position" <|
             ((StringParser.use <|
                 getPositionAfter ( any (match "f") ))
@@ -267,7 +267,7 @@ testSomeMatching =
                 seqnc [ some (match "f"), match "bar" ])
                 |> expectToFailToParseWith
                     "bar"
-                    (Failed (ByExpectation (ExpectedValue "f", GotValue "b")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedValue "f", GotValue "b")) (0, 0)))
         ]
 
 testAndMatching : Test
@@ -284,7 +284,7 @@ testAndMatching =
                 seqnc [ Operator.and (match "foo"), match "barfoo" ])
                 |> expectToFailToParseWith
                     "barfoo"
-                    (Failed (ByExpectation (ExpectedValue "foo", GotValue "b")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedValue "foo", GotValue "b")) (0, 0)))
         ]
 
 testNotMatching : Test
@@ -295,7 +295,7 @@ testNotMatching =
                 seqnc [ Operator.not (match "foo"), match "foobar" ])
                 |> expectToFailToParseWith
                     "foobar"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "matches when sample not exists" <|
             ((StringParser.use <|
                 seqnc [ Operator.not (match "foo"), match "barfoo" ])
@@ -377,7 +377,7 @@ testPreMatching =
                     ])
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "provides access to the position" <|
             ((StringParser.use <|
                 seqnc
@@ -409,7 +409,7 @@ testNegPreMatching =
                     ])
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedEndOfInput, GotValue "f")) (0, 0)))
         , test "provides access to the position" <|
             ((StringParser.use
                 <| seqnc
@@ -487,7 +487,7 @@ testREMatching =
                 redesc "f?oo" "foo regex")
                 |> expectToFailToParseWith
                     "boo"
-                    (Failed (ByExpectation (ExpectedRegexMatch "foo regex", GotValue "b")) (0, 0)))
+                    (FailedMy (ByExpectation (ExpectedRegexMatch "foo regex", GotValue "b")) (0, 0)))
         ]
 
 testDefiningAndCallingRules : Test
@@ -529,7 +529,7 @@ testDefiningAndCallingRules =
                 |> Parser.andUse (call "test")
                 |> expectToFailToParseWith
                     "bar"
-                    (Failed (FollowingRule "test"
+                    (FailedMy (FollowingRule "test"
                         (ByExpectation (ExpectedValue "foo", GotValue "b"))) (0, 0))) -- GotValue "bar"
         ]
 
@@ -570,6 +570,13 @@ nestedFailureOf strings sample position =
             []
             strings
         , sample)) position
+
+expectToParseWith : String -> StringParser.ParseResult -> StringParser.Parser -> (() -> Expect.Expectation)
+expectToParseWith input result parser =
+    \() ->
+          Expect.equal
+              result
+              (StringParser.toMyResult (parser |> parse input))
 
 expectToParse : String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParse input output parser =

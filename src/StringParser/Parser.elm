@@ -2,6 +2,7 @@ module StringParser.Parser exposing
     ( Parser
     , init, withRules, withGrammar, use
     , ParseResult
+    , toMyResult
     , ReturnType(..)
     , Grammar, Rules, Operator, Token
     )
@@ -53,7 +54,7 @@ type alias Rules = G.Rules ReturnType
 {-| TODO -}
 type alias Token = M.Token ReturnType
 
-{-| TODO -}
+{-| TODO MyParseResult ?? -}
 type alias ParseResult = PR.MyParseResult ReturnType
 
 type alias Adapter k = (ReturnType -> k)
@@ -83,6 +84,10 @@ setStartRule = P.setStartRule
 -- adaptWith : Adapter k -> Parser -> Parser
 -- adaptWith userAdapter cfg =
 --     P.adaptWith adapter cfg
+
+toMyResult : PR.ParseResult ReturnType -> ParseResult
+toMyResult result =
+    result |> PR.toMyResult adapter
 
 adapter : Token -> ReturnType
 adapter token =
