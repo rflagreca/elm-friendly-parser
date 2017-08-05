@@ -319,27 +319,38 @@ testActionMatching =
                 action (match "foo")
                     (\match ctx ->
                         case match of
-                            Chunk str ->
+                            Lexem str ->
                                 Pass (Chunk (str ++ "magic"))
-                            _ -> Pass match))
+                            _ -> Pass (Chunk "bar")))
                 |> expectToParse
                     "foo"
                     "foomagic")
         , test "provides access to the position" <|
             ((StringParser.use <|
                 action (match "foo")
-                    (\match { state } ->
+                    (\match state ->
                         case match of
-                            Chunk str ->
+                            Lexem str ->
                                 Pass (Chunk (Basics.toString (state.position)))
-                            _ -> Pass match))
+                            _ -> Pass (Chunk "-")))
+                |> expectToParse
+                    "foo"
+                    "3")
+        , test "provides access to the position" <|
+            ((StringParser.use <|
+                action (match "foo")
+                    (\match state ->
+                        case match of
+                            Lexem str ->
+                                Pass (Chunk (Basics.toString (state.position)))
+                            _ -> Pass (Chunk "-")))
                 |> expectToParse
                     "foo"
                     "3")
         , test "fails when user-code returned failure even when match was successful by itself" <|
             ((StringParser.use <|
                 action (match "foo")
-                    (\match ctx -> Fail))
+                    (\match state -> Fail))
                 |> expectToFailToParseWith
                     "foo"
                     (Failed (ByExpectation (ExpectedAnything, GotValue "")) (0, 3)))

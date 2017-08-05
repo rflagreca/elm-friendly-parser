@@ -54,7 +54,7 @@ type alias Rules = G.Rules ReturnType
 type alias Token = M.Token ReturnType
 
 {-| TODO -}
-type alias ParseResult = PR.ParseResult ReturnType
+type alias ParseResult = PR.MyParseResult ReturnType
 
 type alias Adapter k = (ReturnType -> k)
 

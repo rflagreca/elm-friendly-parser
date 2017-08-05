@@ -105,16 +105,16 @@ Matched
 -}
                     (SPExport.parseResult
                         (Matched
-                            (SP.RList (
-                                [ SP.RString "a"
-                                , SP.RList
-                                    [ SP.RString "foo"
-                                    , SP.RString "bar"
-                                    , SP.RList
-                                        [ SP.RString "abc" ]
-                                    , SP.RString "xyz"
+                            (SP.Chunks (
+                                [ SP.Chunk "a"
+                                , SP.Chunks
+                                    [ SP.Chunk "foo"
+                                    , SP.Chunk "bar"
+                                    , SP.Chunks
+                                        [ SP.Chunk "abc" ]
+                                    , SP.Chunk "xyz"
                                     ]
-                                , SP.RString "bar"
+                                , SP.Chunk "bar"
                                 ]
                             ))))
         ]
@@ -146,16 +146,16 @@ testExportingResult =
                     """
 Matched [ "foo" ].
 """
-                    (SP.start (choice [ match "foo", match "bar" ])
-                              |> Parser.parse "foo"
-                              |> SPExport.parseResult)
+                    (SP.use (choice [ match "foo", match "bar" ])
+                            |> Parser.parse "foo"
+                            |> SPExport.parseResult)
         , test "should properly export the match, p.II" <|
             \() ->
                 Expect.equal
                     """
 Matched [ "bar" ].
 """
-                    (SP.start (choice [ match "foo", match "bar" ])
-                              |> Parser.parse "bar"
-                              |> SPExport.parseResult)
+                    (SP.use (choice [ match "foo", match "bar" ])
+                            |> Parser.parse "bar"
+                            |> SPExport.parseResult)
         ]
