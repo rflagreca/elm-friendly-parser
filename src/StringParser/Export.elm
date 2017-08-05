@@ -83,9 +83,9 @@ token aToken =
 parseResult : StringParser.ParseResult -> String
 parseResult result =
      case result of
-        Matched value ->
-            "\nMatched " ++ (token value) ++ ".\n"
-        Failed failure position ->
+        MatchedMy value ->
+            "\nMatched " ++ (returnType value) ++ ".\n"
+        FailedMy failure position ->
             let
                 positionStr =
                     case position of

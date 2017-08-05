@@ -104,7 +104,7 @@ Matched
 """
 -}
                     (SPExport.parseResult
-                        (Matched
+                        (MatchedMy
                             (SP.Chunks (
                                 [ SP.Chunk "a"
                                 , SP.Chunks
@@ -131,7 +131,7 @@ Failed at position 20:20 ( line 20, char 20 )
 Expected value "a", however got value "b".
 """
                     (SPExport.parseResult
-                        (Failed
+                        (FailedMy
                             (ByExpectation ( ExpectedValue "a", GotValue "b" ))
                          (20, 20)))
 

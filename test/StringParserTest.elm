@@ -542,7 +542,7 @@ testReportingPosition =
                 match "foo")
                 |> expectToParseWith
                     "foo"
-                    (Matched (Chunk "foo")))
+                    (MatchedMy (Chunk "foo")))
         , test "properly reports position of the failure" <|
             ((StringParser.use <|
                 seqnc [ match "fo", match "x" ])
@@ -563,7 +563,7 @@ testReportingPosition =
 
 nestedFailureOf : List (String, Sample) -> Sample -> Position -> StringParser.ParseResult
 nestedFailureOf strings sample position =
-    Failed (FollowingNestedOperator
+    FailedMy (FollowingNestedOperator
         (List.foldl
             (\(str, sample) failures ->
                 failures ++ [ (ByExpectation (ExpectedValue str, sample)) ])
@@ -575,19 +575,19 @@ expectToParse : String -> String -> StringParser.Parser -> (() -> Expect.Expecta
 expectToParse input output parser =
     parser |> expectToParseWith
         input
-        (Matched (Chunk output))
+        (MatchedMy (Chunk output))
 
 expectToParseAsRule : String -> String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParseAsRule input output ruleName parser =
     parser |> expectToParseWith
         input
-        (Matched (Match.InRule ruleName (Chunk output)))
+        (MatchedMy (StringParser.InRule ruleName (Chunk output)))
 
 expectToParseNested : String -> List String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParseNested input chunks parser =
     parser |> expectToParseWith
         input
-        (Matched (Chunks
+        (MatchedMy (Chunks
                 (chunks |> List.map (\chunk -> Chunk chunk))))
 
 getPositionAfter : StringParser.Operator -> StringParser.Operator
@@ -599,8 +599,8 @@ getLabelValueOrFail label op =
     action op
         (\val state ->
             case Dict.get label state.values of
-                Just val -> Pass val
-                Nothing -> Fail)
+                Just (Lexem val) -> Pass (Chunk val)
+                _ -> Fail)
 
 failIfLabelHasValue : String -> String -> StringParser.Operator -> StringParser.Operator
 failIfLabelHasValue label successVal op =
