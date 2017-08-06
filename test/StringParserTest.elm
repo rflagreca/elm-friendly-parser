@@ -353,7 +353,7 @@ testActionMatching =
                     (\match state -> Fail))
                 |> expectToFailToParseWith
                     "foo"
-                    (Failed (ByExpectation (ExpectedAnything, GotValue "")) (0, 3)))
+                    (FailedMy (ByExpectation (ExpectedAnything, GotValue "")) (0, 3)))
         -- TODO: lists etc.
         ]
 
@@ -493,18 +493,18 @@ testREMatching =
 testDefiningAndCallingRules : Test
 testDefiningAndCallingRules =
     describe "defining and calling rules"
-        [ test "user should be able to add custom rules" <|
-            let
-                ruleSpec = match "foo"
-                parser = StringParser.withRules
-                    [ ( "test", ruleSpec )
-                    ] |> Parser.setStartRule "test"
-            in
-                (\() ->
-                    Expect.equal
-                        (Just ruleSpec)
-                        (parser |> Grammar.getRule "test"))
-        , test "user should be able to call rules by name" <|
+        -- [ test "user should be able to add custom rules" <|
+        --     let
+        --         ruleSpec = match "foo"
+        --         parser = StringParser.withRules
+        --             [ ( "test", ruleSpec )
+        --             ] |> Parser.setStartRule "test"
+        --     in
+        --         (\() ->
+        --             Expect.equal
+        --                 (Just ruleSpec)
+        --                 (parser |> Grammar.getRule "test"))
+        [ test "user should be able to call rules by name" <|
             (StringParser.withRules
                 [ ( "test", match "foo" )
                 , ( "start", call "test" )
@@ -521,7 +521,7 @@ testDefiningAndCallingRules =
                 |> Parser.andUse (call "test")
                 |> expectToMatchWith
                         "foo"
-                        (Chunk "test" (Chunk "foo")))
+                        (StringParser.InRule "test" (Chunk "foo")))
 
         , test "failure contains failed rule information" <|
             (StringParser.withRules
@@ -576,7 +576,7 @@ expectToParseWith input result parser =
     \() ->
           Expect.equal
               result
-              (StringParser.toMyResult (parser |> parse input))
+              (parser |> StringParser.parse input)
 
 expectToParse : String -> String -> StringParser.Parser -> (() -> Expect.Expectation)
 expectToParse input output parser =
@@ -596,6 +596,16 @@ expectToParseNested input chunks parser =
         input
         (MatchedMy (Chunks
                 (chunks |> List.map (\chunk -> Chunk chunk))))
+
+expectToFailToParseWith : String -> StringParser.ParseResult -> StringParser.Parser -> (() -> Expect.Expectation)
+expectToFailToParseWith input expectedFailure parser =
+    \() ->
+        let
+            result = parser |> StringParser.parse input
+        in
+            case result of
+                MatchedMy _ -> Expect.fail ("Expected to fail to parse \"" ++ input ++ "\".")
+                actualFailure -> Expect.equal actualFailure expectedFailure
 
 getPositionAfter : StringParser.Operator -> StringParser.Operator
 getPositionAfter op =

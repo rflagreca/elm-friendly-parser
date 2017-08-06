@@ -1,8 +1,7 @@
 module StringParser.Parser exposing
     ( Parser
     , init, withRules, withGrammar, use
-    , ParseResult
-    , toMyResult
+    , parse, ParseResult
     , ReturnType(..)
     , Grammar, Rules, Operator, Token
     )
@@ -85,9 +84,9 @@ setStartRule = P.setStartRule
 -- adaptWith userAdapter cfg =
 --     P.adaptWith adapter cfg
 
-toMyResult : PR.ParseResult ReturnType -> ParseResult
-toMyResult result =
-    result |> PR.toMyResult adapter
+parse : String -> Parser -> ParseResult
+parse input parser =
+    parser |> P.parse input |> PR.toMyResult adapter
 
 adapter : Token -> ReturnType
 adapter token =

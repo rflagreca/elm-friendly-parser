@@ -147,7 +147,7 @@ testExportingResult =
 Matched [ "foo" ].
 """
                     (SP.use (choice [ match "foo", match "bar" ])
-                            |> Parser.parse "foo"
+                            |> SP.parse "foo"
                             |> SPExport.parseResult)
         , test "should properly export the match, p.II" <|
             \() ->
@@ -156,6 +156,6 @@ Matched [ "foo" ].
 Matched [ "bar" ].
 """
                     (SP.use (choice [ match "foo", match "bar" ])
-                            |> Parser.parse "bar"
+                            |> SP.parse "bar"
                             |> SPExport.parseResult)
         ]
